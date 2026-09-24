@@ -1,0 +1,270 @@
+:root {
+  color-scheme: light;
+}
+.settings-panel .theme-setting {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+  padding-top: 14px;
+}
+.theme-setting select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: #faf9f6;
+  color: var(--ink);
+  font: inherit;
+}
+.theme-setting select:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #e5ebee;
+  --muted: #a7b4be;
+  --teal: #e2a47b;
+  --line: #3a444e;
+  color: var(--ink);
+  background: #171b20;
+}
+:root[data-theme="dark"] .messenger-chat {
+  --ink: #e5ebee;
+  --muted: #a7b4be;
+  --teal: #e2a47b;
+  --line: #3a444e;
+  background: #171b20;
+}
+:root[data-theme="dark"]
+  :is(
+    .messenger-topbar,
+    .conversation-header,
+    .conversation-main,
+    .conversation-sidebar,
+    .settings-panel,
+    .action-popover
+  ) {
+  background: #20262c;
+  border-color: var(--line);
+  color: var(--ink);
+}
+:root[data-theme="dark"] .chat-messages {
+  background: #171b20;
+  scrollbar-color: #55616c transparent;
+}
+:root[data-theme="dark"] .conversation-sidebar {
+  scrollbar-color: #55616c transparent;
+}
+:root[data-theme="dark"]
+  :is(
+    .search-field,
+    .message-composer,
+    .profile-card,
+    .note-editor textarea,
+    .status-setting select,
+    .theme-setting select,
+    .pending-attachments li
+  ) {
+  background: #293139;
+  border-color: var(--line);
+  color: var(--ink);
+}
+:root[data-theme="dark"] :is(input, textarea)::placeholder {
+  color: #a7b4be;
+  opacity: 1;
+}
+:root[data-theme="dark"] :is(.conversation-section h2, .list-empty) {
+  color: var(--muted);
+}
+:root[data-theme="dark"] .conversation-section h2 > span {
+  background: #303a43;
+  color: var(--ink);
+}
+:root[data-theme="dark"]
+  :is(
+    .conversation-row:hover,
+    .search-result:hover,
+    .action-popover button:hover,
+    .icon-button:hover:not(:disabled),
+    .chat-settings summary:hover,
+    .chat-settings[open] summary,
+    .settings-account-actions > a:hover,
+    .settings-account-actions > button:hover:not(:disabled)
+  ) {
+  background: #303a43;
+}
+:root[data-theme="dark"] .conversation-row.selected {
+  background: #49382e;
+  color: #ffe0c9;
+  box-shadow: inset 3px 0 #e2a47b;
+}
+:root[data-theme="dark"] .chat-avatar {
+  background: #35473e;
+  color: #d9f0e1;
+}
+:root[data-theme="dark"] .group-avatar {
+  background: #51422f;
+  color: #f4d7a6;
+}
+:root[data-theme="dark"] .presence {
+  border-color: #20262c;
+}
+:root[data-theme="dark"] :is(.unread, .selected .unread) {
+  background: #e2a47b;
+  color: #241b16;
+}
+:root[data-theme="dark"] .chat-message {
+  background: #293139;
+  border-color: #3a444e;
+  box-shadow: none;
+}
+:root[data-theme="dark"] .chat-message.sent {
+  background: #49382e;
+  border-color: #705340;
+}
+:root[data-theme="dark"] .file-attachment {
+  background: #20262c;
+  border-color: #4b5863;
+  color: var(--ink);
+}
+:root[data-theme="dark"] .file-attachment:hover {
+  background: #303a43;
+}
+:root[data-theme="dark"] .saved-note {
+  background: #49382e;
+  color: #ffe0c9;
+}
+:root[data-theme="dark"] .note-editor button {
+  background: #293139;
+  border-color: var(--line);
+  color: var(--ink);
+}
+:root[data-theme="dark"]
+  :is(
+    .message-composer .send-button,
+    .note-editor button:first-child,
+    .brand > span
+  ) {
+  background: #9b5132;
+  color: #fff;
+  border-color: #b9704c;
+}
+:root[data-theme="dark"] .message-composer .send-button:hover:not(:disabled) {
+  background: #b36340;
+}
+:root[data-theme="dark"] .empty-chat {
+  background:
+    radial-gradient(ellipse at center, #49382e55, transparent 65%), #171b20;
+}
+:root[data-theme="dark"] .empty-chat > span {
+  background: #49382e;
+  color: #e2a47b;
+  box-shadow: none;
+}
+:root[data-theme="dark"]
+  :is(.chat-error, .attachment-error, .settings-account-actions > button) {
+  color: #ffb2a7;
+}
+:root[data-theme="dark"]
+  :is(button, input, textarea, select, summary, a):focus-visible {
+  outline-color: #efb38d;
+}
+
+/* Login uses the same page-wide theme, including all decorative surfaces. */
+:root[data-theme="dark"] .signin-screen {
+  color-scheme: dark;
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 12% 20%, #503c2e55, transparent 45%),
+    radial-gradient(ellipse at 87% 78%, #24453e55, transparent 43%), #171b20;
+}
+:root[data-theme="dark"] .signin-panel {
+  background: #20262c;
+  border-color: #3a444e;
+  box-shadow: 0 24px 65px #0003;
+}
+:root[data-theme="dark"] :is(.signin-heading h1, .signin-field label) {
+  color: #e5ebee;
+}
+:root[data-theme="dark"]
+  :is(.signin-heading p, .signin-footer, .signin-art-caption) {
+  color: #a7b4be;
+}
+:root[data-theme="dark"] .signin-brand {
+  color: #efb38d;
+}
+:root[data-theme="dark"] .signin-symbol {
+  background: #49382e;
+  border-color: #705340;
+  color: #efb38d;
+}
+:root[data-theme="dark"] .signin-field input {
+  background: #293139;
+  color: #e5ebee;
+  border-color: #4b5863;
+}
+:root[data-theme="dark"] .signin-field input:focus {
+  background: #303a43;
+  border-color: #efb38d;
+}
+:root[data-theme="dark"] .signin-password button {
+  color: #efb38d;
+}
+:root[data-theme="dark"] .signin-password button:hover {
+  background: #49382e;
+}
+:root[data-theme="dark"] .signin-submit {
+  background: #9b5132;
+  border-color: #b9704c;
+  color: #fff;
+}
+:root[data-theme="dark"] .signin-submit:hover:not(:disabled) {
+  background: #b36340;
+}
+:root[data-theme="dark"] .signin-footer {
+  border-color: #3a444e;
+}
+:root[data-theme="dark"] .signin-error {
+  background: #462c2b;
+  border-color: #995953;
+  color: #ffb2a7;
+}
+:root[data-theme="dark"] .signin-field-error {
+  color: #ffb2a7;
+}
+:root[data-theme="dark"] .signin-field input[aria-invalid="true"] {
+  border-color: #ef998c;
+}
+:root[data-theme="dark"] .signin-note {
+  background: #49382e;
+  border-color: #705340;
+  box-shadow: none;
+}
+:root[data-theme="dark"] .signin-note-right {
+  background: #294039;
+  border-color: #446456;
+}
+:root[data-theme="dark"] .signin-note :is(strong, span) {
+  color: #e4d9cc;
+}
+:root[data-theme="dark"] .signin-note .signin-note-icon {
+  background: #634938;
+  color: #ffe0c9;
+}
+:root[data-theme="dark"] .signin-dots {
+  background: #23332e;
+  border-color: #446456;
+}
+:root[data-theme="dark"] .signin-note-lines i {
+  background: #d2b29055;
+}
+@media (max-width: 700px) {
+  .theme-setting select {
+    font-size: 16px;
+  }
+}

@@ -1,0 +1,560 @@
+MESSENGER APPLICATION - FRONTEND AND BACKEND FUNCTIONALITY
+Analysis date: 23 September 2026
+
+FOLLOW-UP, 23 September 2026: This inventory was written before the WebSocket
+increment. The application now has authenticated WebSocket refresh hints with
+Redis production fan-out, reconnect handling, and HTTP reconciliation fallback.
+Sequence locking, Redis registry configuration/revocation, frontend CI failures,
+and multi-page forward catch-up were addressed in that increment. The descriptions
+below preserve the earlier analysis snapshot. See WEBSOCKET-IMPLEMENTATION.md and
+the frontend/backend CHANGE_HISTORY.md files for the updated behavior and checks.
+
+This document describes the source code currently in this workspace. It separates
+working application features, local-only interface behavior, and missing features.
+It is a functionality inventory, not a certification of a production deployment.
+
+1. APPLICATION OVERVIEW
+=======================
+
+Messenger is an account-based, one-to-one text messaging application.
+An administrator provisions accounts. Users sign in, search for other users,
+open direct conversations, send text messages, and retrieve saved history.
+
+Frontend: React 19, React Router, JavaScript/TypeScript, Vite, and CSS.
+Backend: Java 25, Spring Boot 4.1.1, Spring Security, JPA, and JdbcTemplate.
+Primary database: PostgreSQL.
+Production session and login-rate-limit infrastructure: Redis, with unresolved
+production session issues described in section 12.
+Database migrations: Flyway.
+Production frontend serving and API proxy: Nginx.
+
+Communication uses HTTP JSON requests with session cookies. Message updates use
+polling. There is no implemented WebSocket messaging channel, despite the backend
+having a WebSocket dependency.
+
+2. FRONTEND PAGES AND NAVIGATION
+================================
+
+Routes:
+  /           Shows login, or redirects an authenticated user to chat.
+  /login      Login page with the same authentication-aware behavior.
+  /chat       Protected messenger interface.
+  /profile    Protected, read-only profile page.
+  Other paths Redirect to /login.
+
+On startup, the frontend calls the backend to restore the session. While this is
+pending, it displays "Restoring your session". Protected content is unavailable
+to signed-out users. Signed-in users are redirected away from the login screen.
+
+The chat component remains mounted when the user visits the profile page. This
+preserves its in-memory drafts and local preferences during that navigation.
+The layout supports a sidebar and conversation view, with mobile Back navigation.
+
+3. FRONTEND LOGIN AND SESSION FUNCTIONALITY
+===========================================
+
+Login form:
+  - Username and password fields.
+  - Show/hide password control.
+  - Required-field validation.
+  - Trimmed username limit of 64 characters.
+  - Password limit of 72 UTF-8 bytes.
+  - Field-specific validation errors and general service/network errors.
+  - Disabled submission while a login request is running.
+  - Duplicate-submit prevention.
+  - Password field cleared after successful login.
+  - Navigation to /chat after successful authentication.
+  - Administrator-contact guidance for users who need an account.
+
+Authentication request flow:
+  1. Request a CSRF token from the backend.
+  2. Validate the returned token/header information.
+  3. Send username and password with the token and session cookie.
+  4. Validate the returned public user information.
+  5. Store current user information in React state.
+
+The frontend does not store passwords or session tokens in browser storage.
+The browser sends session cookies with API requests.
+
+Session management:
+  - Calls /me to restore the user after refresh.
+  - Revalidates on window focus and when the tab becomes visible.
+  - Uses a localStorage change signal to notify other tabs of login/logout.
+    That signal does not contain credentials or user profile data.
+  - Rechecks the session after a chat API response returns HTTP 401.
+  - Uses request versions to avoid applying stale authentication responses.
+  - A temporary revalidation network failure preserves an already-known session.
+  - Logout obtains a fresh CSRF token and calls the backend logout endpoint.
+  - Failed logout keeps the session visible and provides an error for retry.
+
+Authentication API calls have a 15-second timeout per request. User-facing errors
+cover invalid input, invalid credentials, denied requests, rate limits, backend
+unavailability, timeout, network failure, and invalid server responses.
+
+4. FRONTEND CHAT FUNCTIONALITY
+===============================
+
+4.1 People search
+
+The sidebar searches the real backend user directory by name or username.
+Search waits 200 milliseconds after input changes to reduce request volume.
+Input is trimmed and limited to 100 characters. Empty input makes no search.
+
+Results show names, usernames, and avatars. The UI includes searching, no-result,
+failure, and retry states. Responses for obsolete searches are ignored.
+At most 50 results are returned; users are asked to refine larger searches.
+
+The current user and disabled accounts are excluded by the backend.
+Production directory search does not search groups. A group-capable helper and
+mock fixtures in the repository are not evidence of a connected group feature.
+
+4.2 Opening and listing conversations
+
+Selecting a person asks the backend to create or retrieve their direct chat.
+Only one direct conversation exists for each pair of users.
+The frontend selects the opened conversation and clears the search.
+Opening errors can be retried by selecting the person again.
+
+After initial loading, the most recent conversation is selected automatically.
+The sidebar displays pinned and recent sections. Recent conversations are sorted
+by activity. Hidden conversations are excluded from the local visible list.
+
+Conversation summaries are fetched in pages of 50 using a cursor.
+"Load more conversations" retrieves another page. The list refreshes every five
+seconds while the browser tab is visible and also refreshes on window focus.
+Merging preserves local preferences and avoids replacing a newer message preview
+with an older list response.
+
+4.3 Reading messages
+
+Selecting a chat loads its latest page of up to 50 messages.
+Messages are shown in ascending sequence order, with sent/received styling and
+timestamps. Empty conversations display a prompt to begin chatting.
+New messages trigger scrolling to the latest displayed message.
+
+"Load older messages" requests messages before the earliest loaded sequence.
+The frontend merges pages, deduplicates by message ID, and sorts by sequence.
+Loading and error states are displayed, and active history polling retries errors.
+
+An open conversation polls for messages after its last fetched sequence every
+three seconds while the browser tab is visible. It also refreshes on window focus.
+The current implementation fetches one forward page per polling cycle. Large
+backlogs therefore take multiple cycles; it does not immediately drain hasMore.
+
+4.4 Sending messages
+
+  - Plain text messages only.
+  - Draft maximum of 4,000 characters.
+  - Whitespace-only messages cannot be submitted.
+  - Text is trimmed before sending.
+  - Enter sends; Shift+Enter inserts a newline.
+  - IME composition does not accidentally submit a message.
+  - Composer disabled until initial history is loaded and during a send.
+  - Each send uses a generated client UUID for retry identification.
+  - A successful response adds the saved message and updates the preview.
+  - The corresponding draft is cleared after success.
+  - A failed send retains the draft and offers Retry send.
+  - Retrying unchanged text reuses its client UUID to prevent duplicate storage.
+  - Editing the text creates a new send attempt and identifier.
+
+Drafts and uncertain-send identifiers survive conversation switching while the
+chat component remains mounted. They do not survive a full reload or account
+change. After an uncertain send followed by reload, history must be checked before
+manually composing the same message again.
+
+Chat requests have a 15-second timeout covering their request flow. State-changing
+chat requests first obtain a CSRF token. Errors include expired session, missing
+resource, denied request, conflicting retry, timeout, and connectivity failure.
+
+4.5 Local conversation actions
+
+Pin/unpin:
+  Moves the conversation into or out of the local pinned section.
+
+Mark read/unread:
+  Toggles a local marker. This is not a server read receipt or an accurate count
+  of unread incoming messages.
+
+Mute/unmute:
+  Toggles local conversation state. There is no connected notification delivery
+  service or persisted backend notification preference.
+
+Remove from recent list:
+  Requests confirmation, then hides the conversation locally and unpins it.
+  Does not delete the conversation or messages from PostgreSQL.
+  Searching for that person and opening the chat reveals it again.
+
+All these actions reset on a full page reload. They are not synchronized between
+users, devices, or browser sessions.
+
+5. FRONTEND SETTINGS, PROFILE, AND PRESENTATION
+================================================
+
+Settings menu:
+  - Displays current user identity.
+  - Links to the profile page.
+  - Offers Online, Offline, In a meeting, and Busy status choices.
+  - Adds, edits, saves, cancels, or removes a personal note of up to 160 characters.
+  - Switches between light and dark themes.
+  - Opens TN Mail in a separate tab.
+  - Signs out and displays logout errors.
+
+Status and personal notes exist only in local React state. Selecting Offline does
+not log out, stop messaging, or publish presence to another user.
+Theme preference persists in browser storage and synchronizes across tabs.
+The TN Mail control is an external link, not email integration or single sign-on.
+
+Profile page:
+  - Displays name and username.
+  - Supports optional phone, email, date of birth, date of joining, designation,
+    circle, zone, and division fields.
+  - Formats valid dates and shows "Not provided" for missing information.
+  - Provides Back to chat navigation.
+  - Does not provide editing or saving controls.
+
+Important backend connection limit:
+The current backend user response contains only id, username, and name. The user
+entity does not store the optional profile fields listed above. Those frontend
+fields are prepared for future data but will normally show missing-value labels
+with the present backend.
+
+Presentation/accessibility features include labelled controls, loading status and
+error announcements, a live message log, Escape handling on menus, focus handling,
+and responsive CSS. These implementations are not a completed accessibility audit.
+
+The code includes attachment rendering and group presentation structures, but the
+actual composer upload button is disabled and no production group/upload API is
+connected. Mock chat data is retained as test/development material.
+
+6. BACKEND ACCOUNT AND AUTHENTICATION FUNCTIONALITY
+====================================================
+
+User accounts contain:
+  - UUID identifier.
+  - Unique username.
+  - Display name.
+  - Password hash.
+  - Enabled flag.
+  - Creation timestamp.
+
+The backend normalizes login usernames by trimming and lowercasing them.
+Spring Security authenticates against stored accounts using BCrypt at cost 12.
+Passwords exceeding the BCrypt 72-byte UTF-8 limit are rejected.
+Invalid credentials receive a generic response rather than disclosing whether
+the username or password was wrong. Disabled accounts cannot authenticate.
+Password hashes are not returned in the public user response.
+
+Successful login:
+  - Applies account login-rate limiting in addition to the IP filter.
+  - Authenticates the account and clears its account rate-limit counter on success.
+  - Applies the configured concurrent-session strategy.
+  - Rotates the session identifier and CSRF token.
+  - Explicitly saves the authenticated security context.
+  - Publishes an authentication success audit event.
+  - Returns the public user object.
+
+Authentication failures inside the authentication flow publish a failure event.
+This is not a comprehensive audit trail of every messaging or administrative action.
+
+Sessions:
+  - Configured inactivity timeout: 30 minutes.
+  - HttpOnly, SameSite=Lax cookies; Secure enabled in the base configuration.
+  - Session tracking uses cookies.
+  - Local/test profiles use a local session registry.
+  - Production intends to use Redis sessions and a shared session registry.
+  - Configured maximum sessions per user defaults to five, expiring older sessions
+    when exceeded. Production wiring must be corrected before relying on this.
+  - Logout invalidates the current session and clears authentication.
+  - A revoke-all service exists but has a production compatibility defect and no
+    exposed administrative HTTP endpoint in the reviewed controllers.
+
+CSRF protection applies to state-changing requests. Credentialed cross-origin
+requests are limited to configured frontend origins, methods, and headers.
+The application uses sessions rather than JWT access/refresh tokens.
+
+Account provisioning:
+  - Optional startup account creation exists only under the local profile.
+  - Bootstrap usernames use 3-64 lowercase letters, numbers, dots, underscores,
+    or hyphens.
+  - Bootstrap passwords require at least 12 characters and at most 72 UTF-8 bytes.
+  - Provisioning inserts missing accounts and does not reset existing passwords.
+  - Production accounts require an external administrative provisioning process.
+  - There is no public registration, password recovery, password-change API,
+    account management screen, or administrator role workflow.
+
+7. BACKEND MESSAGING FUNCTIONALITY
+===================================
+
+Authorization:
+Each operation resolves the current session username to an enabled user.
+The backend chooses the sender from that authenticated identity, never from a
+client-supplied sender field. Reading and sending require conversation membership.
+Unknown and inaccessible conversations both return 404 to reduce information leaks.
+
+Directory:
+Searches enabled users by case-insensitive display name or normalized username.
+Excludes the caller. Escapes SQL LIKE wildcards so the query is a literal search.
+Returns up to 50 users ordered by username. Empty queries return an empty list.
+
+Direct conversations:
+Rejects self-conversations and missing/disabled target accounts.
+Builds a canonical pair key from the two user IDs. A unique database constraint
+and deterministic user-row locking prevent duplicate direct conversations.
+Creates the conversation and both memberships transactionally when needed.
+Returns an existing conversation when that pair already has one.
+
+Conversation listing:
+Returns conversations belonging to the caller, including the other person's ID
+and name, last activity timestamp, and latest message preview.
+Uses pages of 50 with an encoded timestamp/UUID cursor and descending recency.
+The current API uses cursor/nextCursor, not offset/nextOffset.
+
+History:
+Returns up to 50 messages plus a hasMore flag.
+Without a cursor it returns the newest page in ascending sequence order.
+With before it returns an older page; with after it returns newer messages.
+Supplying both before and after, or invalid cursor ranges, is rejected.
+
+Sending:
+Requires a client UUID and nonblank text of at most 4,000 characters.
+Stores server message UUID, sequence, conversation, sender, client UUID, body,
+and timestamp. Updates conversation activity after inserting a new message.
+
+Idempotency:
+A unique conversation/sender/client-ID combination identifies an attempted send.
+Reusing that combination with identical normalized text returns the stored message.
+Reusing it with different text returns HTTP 409.
+PostgreSQL uses INSERT ... ON CONFLICT for duplicate attempts.
+The H2 test branch uses a conversation lock and explicit duplicate checks.
+
+Known correctness limit:
+PostgreSQL does not currently lock the conversation before allocating the message
+sequence. Concurrent transactions may commit out of sequence order, allowing
+incremental polling to skip an earlier message. Idempotency does not solve this.
+
+8. HTTP API INVENTORY
+======================
+
+GET /api/v1/users/csrf
+  Public token endpoint. Returns headerName and token for CSRF-protected requests.
+
+POST /api/v1/users/login
+  Body: { username, password }
+  Requires CSRF token. Returns { user: { id, username, name } }.
+
+GET /api/v1/users/me
+  Requires authentication. Returns the current enabled user's public identity.
+
+POST /api/v1/users/logout
+  Handled by Spring Security. Requires CSRF. Returns 204 on success.
+
+GET /api/v1/chat/users?q=search
+  Requires authentication. Returns an array of matching public user identities.
+
+GET /api/v1/chat/conversations?cursor=...
+  Requires authentication. Returns { conversations, nextCursor }.
+
+POST /api/v1/chat/conversations/direct
+  Body: { userId }
+  Requires authentication and CSRF. Returns the direct conversation summary.
+
+GET /api/v1/chat/conversations/{id}/messages
+  Optional query: before=sequence OR after=sequence.
+  Requires authentication and membership. Returns { messages, hasMore }.
+
+POST /api/v1/chat/conversations/{id}/messages
+  Body: { clientId, text }
+  Requires authentication, membership, and CSRF. Returns the saved message.
+
+Conversation summary fields:
+  id, targetId, name, updatedAt, lastMessage.
+  lastMessage can be null for an empty conversation.
+
+Message fields:
+  id, sequence, senderId, senderName, clientId, text, sentAt.
+
+Operational endpoints:
+  /actuator/health
+  /actuator/health/liveness
+  /actuator/health/readiness
+  /actuator/prometheus
+  /healthz on the frontend Nginx server.
+
+Health GET requests are public in the backend security configuration.
+Prometheus remains subject to authentication; the supplied Nginx configuration
+does not explicitly proxy it. Monitoring access needs deployment configuration.
+
+9. DATABASE AND DATA LIFETIME
+==============================
+
+app_users:
+  Account identity, unique username, display name, password hash, enabled status,
+  and creation timestamp.
+
+chat_conversations:
+  Conversation UUID, unique direct-pair key, created and updated timestamps.
+
+chat_members:
+  Conversation/user membership. Composite primary key prevents duplicate members.
+
+chat_messages:
+  Identity sequence primary key, unique message UUID, conversation and sender IDs,
+  client retry UUID, message body, and sent timestamp.
+  Foreign keys enforce valid conversations, users, and sender membership.
+  A check rejects blank bodies; a unique constraint protects retry idempotency.
+
+Flyway migrations:
+  V1: Create account storage.
+  V2: Create conversations, memberships, and messages.
+  V3: PostgreSQL pg_trgm directory-search indexes and conversation recency index.
+  V4: PostgreSQL covering message-history index.
+
+Hibernate validates the schema rather than automatically changing it.
+Flyway clean is disabled. Separate migration credentials can be configured.
+JPA handles user persistence; messaging primarily uses parameterized JdbcTemplate
+queries and transactions. PostgreSQL is the durable source of messaging data.
+
+Data persistence summary:
+  Accounts and sent messages       PostgreSQL.
+  Conversation membership          PostgreSQL.
+  Production sessions/counters     Redis, subject to configuration fixes.
+  Local development sessions       Server memory.
+  Theme                           Browser localStorage.
+  Cross-tab session-change signal  Browser localStorage; no credentials.
+  Drafts and retry identifiers     Frontend memory only.
+  Pin/mute/read/hide/status/note    Frontend memory only.
+  Extended profile details         Not stored by the current backend model.
+
+10. SECURITY, ERRORS, AND OPERATIONS
+=====================================
+
+Login rate limiting:
+  - Per-client-address filter plus normalized-username limiting.
+  - Default configuration: 20 attempts per 60-second window per limiter key.
+  - Local/test use bounded in-memory counters.
+  - Production uses Redis atomic counter/expiry scripts shared between instances.
+  - Redis keys hash the source identifier.
+  - Rejections return 429 with Retry-After.
+  - Redis limiter failures are intended to reject login with service unavailable.
+  - No equivalent messaging-send or directory request quota was found.
+
+Proxy handling:
+Tomcat only accepts forwarded client addresses from configured trusted proxies.
+Vite replaces forwarding headers for local development.
+The production Nginx proxy replaces forwarded address/protocol headers, but its
+behavior behind another TLS proxy needs correction or explicit trusted-ingress
+configuration to retain the real external address and protocol.
+
+Error handling:
+The backend maps authentication, malformed JSON, validation, missing resources,
+retry conflicts, rate limits, and service errors into HTTP responses with public
+codes/messages. Unexpected failures receive a generic 500 response.
+This does not guarantee every invalid input edge case has the ideal status code.
+
+Tracing and logs:
+A request filter creates X-Request-ID or accepts a validated ID from a trusted
+proxy. It includes the ID in response headers and logging context.
+Production console logging is configured as structured JSON.
+Authentication audit events have a logging listener.
+Unexpected exceptions are logged with stack traces, so sensitive-data exclusion
+should be validated rather than assumed from the generic response bodies.
+
+Configured operational controls:
+  - Graceful shutdown with a 30-second phase timeout.
+  - Database pool, transaction, query, connection, and server capacity settings.
+  - Liveness and readiness endpoints; base readiness includes PostgreSQL and Redis.
+  - Prometheus metric export.
+  - Security headers and content security policies in backend/Nginx.
+  - Nginx request body limit, static asset caching, and SPA route fallback.
+  - Backend and frontend container images run as non-root users.
+  - Production Compose defines PostgreSQL, Redis, backend, and frontend services,
+    persistent database/Redis volumes, restart policies, and health checks.
+  - HTTPS termination is expected at an external trusted ingress/load balancer.
+
+PRODUCTION.md documents deployment, backups, restoration, monitoring, and alerts.
+The repository does not demonstrate that a backup schedule, restore drill, alert
+receiver, production TLS configuration, or capacity target is currently operational.
+
+CI configuration includes backend verification and infrastructure integration tests,
+frontend install/format/lint/typecheck/tests/build/dependency audit, container build,
+and a Trivy filesystem scan. Configuration is not evidence of a successful CI run.
+
+Local support includes a Windows startup script, development Compose definitions,
+environment examples, and an optional SQL script for local sample conversations.
+
+11. FUNCTIONALITY NOT CURRENTLY IMPLEMENTED
+============================================
+
+  - Public user registration or account approval workflow.
+  - Password reset, password change UI/API, MFA, or SSO.
+  - Administrative user management UI/API.
+  - Editable/persisted extended profiles or avatar upload.
+  - Group creation, group membership management, or group messaging API.
+  - File/image upload and authenticated download backend.
+  - Voice/video calling or voice messages.
+  - WebSocket/server-push delivery or typing indicators.
+  - Shared online presence or persisted personal notes.
+  - Server unread counts, delivered indicators, or read receipts.
+  - Browser push/email notification delivery.
+  - Server-backed pin, mute, archive/hide, or read preferences.
+  - Message edit/delete, reactions, reply threads, forwarding, or message search.
+  - Offline send queue or durable unsent drafts.
+  - End-to-end message encryption; messages are stored as text in the database.
+  - User-facing export, retention management, or deletion workflow.
+
+12. CURRENT VALIDATION AND PRODUCTION LIMITATIONS
+==================================================
+
+Checks run during this task's readiness analysis:
+  Frontend tests:                  26 passed.
+  Backend H2-profile tests:        19 passed; no failures or skips.
+  TypeScript + Vite build:         Passed.
+  Frontend lint:                   Failed on process globals in vite.config.js.
+  Frontend formatting:             Failed for useMessaging.ts.
+  PostgreSQL/Redis container tests: Not run; Docker unavailable here.
+  Deployed browser end-to-end test: Not performed.
+
+Release blockers and gaps:
+  1. Production registry requires an indexed Redis session repository, while
+     application configuration does not explicitly select that implementation.
+  2. PostgreSQL concurrent sequence/commit ordering can cause missed polling data.
+  3. Account-wide revocation calls getAllPrincipals(), which is unsupported by the
+     installed Spring Session-backed production registry.
+  4. Required frontend lint and formatting gates fail.
+  5. Infrastructure tests activate the test profile and bypass the production
+     session registry/storage behavior they need to validate.
+  6. Large incoming backlogs catch up one page per polling interval.
+  7. External TLS ingress/client-IP behavior requires verification and correction.
+  8. Extended profile fields are frontend-only placeholders for future backend data.
+
+Core authentication and direct messaging are implemented, but the application
+should not currently be described as fully production-ready.
+
+Detailed release findings and acceptance steps are in PHASE-2-READINESS.md.
+
+13. MAIN SOURCE LOCATIONS
+==========================
+
+Frontend routing:             frontend/src/App.jsx
+Login UI and behavior:        frontend/src/pages/login/
+Session state:                frontend/src/context/AuthProvider.jsx
+Authentication HTTP client:   frontend/src/services/authService.js
+Chat HTTP client:             frontend/src/services/chatService.ts
+Chat page and polling:        frontend/src/pages/chat/
+Chat UI components:           frontend/src/components/chat/
+Profile display:              frontend/src/pages/profile/Profile.tsx
+Theme:                        frontend/src/context/theme.ts
+
+Backend authentication:       backend/demo/src/main/java/com/ctd/demo/auth/
+Backend security/config:      backend/demo/src/main/java/com/ctd/demo/config/
+Backend messaging:            backend/demo/src/main/java/com/ctd/demo/chat/
+Backend accounts:             backend/demo/src/main/java/com/ctd/demo/user/
+Backend error handling:       backend/demo/src/main/java/com/ctd/demo/error/
+Database migrations:          backend/demo/src/main/resources/db/migration/
+Application configuration:    backend/demo/src/main/resources/application.properties
+Production frontend proxy:    frontend/nginx.conf
+Production service setup:     compose.production.yml
+Operations guidance:          PRODUCTION.md
+
+Paths above are relative to the messenger-app workspace.
+No application source or production data was changed to produce this inventory.

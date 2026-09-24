@@ -1,0 +1,21 @@
+# Local environment files and secrets; keep shareable templates.
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Dependencies and generated output (at any depth).
+node_modules/
+dist/
+dist-ssr/
+target/
+coverage/
+*.log
+
+# Machine-specific editor and OS files.
+.idea/
+.run/
+.vscode/
+.DS_Store
+Thumbs.db
+*.iml

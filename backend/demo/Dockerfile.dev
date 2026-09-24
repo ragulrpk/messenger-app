@@ -1,0 +1,5 @@
+FROM maven:3.9-eclipse-temurin-25
+WORKDIR /workspace
+EXPOSE 8080
+# Source is bind-mounted; Maven dependencies and target use separate volumes.
+CMD ["mvn", "-B", "spring-boot:run"]

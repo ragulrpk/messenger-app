@@ -1,0 +1,5 @@
+FROM node:24-alpine
+WORKDIR /workspace
+EXPOSE 5173
+# Install into the container volume on startup, including lockfile changes.
+CMD ["sh", "-c", "npm ci && npm run dev -- --host 0.0.0.0"]

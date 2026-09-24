@@ -1,0 +1,65 @@
+name: messenger-dev
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: messenger
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in the root .env file}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend/demo
+      dockerfile: Dockerfile.dev
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_PORT: "8080"
+      DB_URL: jdbc:postgresql://postgres:5432/messenger
+      DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in the root .env file}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
+      FRONTEND_ORIGIN: http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/demo:/workspace
+      - maven-dev-cache:/root/.m2
+      - backend-dev-target:/workspace/target
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    environment:
+      API_PROXY_TARGET: http://backend:8080
+      VITE_USE_POLLING: "true"
+      VITE_AUTH_LOGIN_URL: /api/v1/users/login
+      VITE_CHAT_API_URL: /api/v1/chat
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - ./frontend:/workspace
+      - frontend-dev-node-modules:/workspace/node_modules
+      - npm-dev-cache:/root/.npm
+
+volumes:
+  postgres-dev-data:
+  maven-dev-cache:
+  backend-dev-target:
+  frontend-dev-node-modules:
+  npm-dev-cache:
