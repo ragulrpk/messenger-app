@@ -63,6 +63,16 @@ kubectl -n messenger create secret generic messenger-secrets --from-env-file=k8s
 kubectl -n messenger rollout restart deployment/messenger-backend
 ```
 
+### File storage
+
+Uploaded files live on the `messenger-files` PersistentVolumeClaim
+(`file-storage.yaml`), mounted at `/var/lib/messenger/files` in every backend
+pod. Docker Desktop provisions it automatically. On your own server, create a
+PersistentVolume for the physical storage first: `file-storage.yaml` has NFS
+and local-disk examples. Use NFS (`ReadWriteMany`) when backend pods can run on
+more than one node. Files expire after 60 days (`FILE_RETENTION`); the per-file
+limit is 50 MB (`FILE_MAX_SIZE`). Back up this volume together with PostgreSQL.
+
 ## 3. Build images
 
 ```powershell

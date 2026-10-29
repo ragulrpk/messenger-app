@@ -13,8 +13,15 @@ spec:
         app: messenger-backend
     spec:
       terminationGracePeriodSeconds: 45
+      # Lets the non-root backend user (uid 10001) write to the file volume.
+      securityContext:
+        fsGroup: 10001
       imagePullSecrets:
         - name: ghcr-pull
+      volumes:
+        - name: files
+          persistentVolumeClaim:
+            claimName: messenger-files
       containers:
         - name: backend
           image: messenger-backend:k8s-v1
@@ -31,6 +38,11 @@ spec:
             # Activate the shared session, rate limiter and event implementations.
             - name: SPRING_PROFILES_ACTIVE
               value: kubernetes
+            - name: FILE_STORAGE_PATH
+              value: /var/lib/messenger/files
+          volumeMounts:
+            - name: files
+              mountPath: /var/lib/messenger/files
           resources:
             requests:
               cpu: 250m

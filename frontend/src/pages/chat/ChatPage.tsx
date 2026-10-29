@@ -31,6 +31,7 @@ export default function ChatPage({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [files, setFiles] = useState<Record<string, File | null>>({});
   const [status, setStatus] = useState<PresenceStatus>("online");
   const [note, setNote] = useState("");
   const [openError, setOpenError] = useState("");
@@ -76,13 +77,18 @@ export default function ChatPage({
     setConversations((previous) => applyAction(previous, id, value));
     if (value === "remove" && selectedId === id) setSelectedId(null);
   }
-  // Send a message and clear its draft after success.
+  // Send a message and clear its draft and file after success.
   async function send(id: string, text: string) {
     chat.updateTyping(false);
-    if (await chat.send(id, text)) {
+    const file = files[id] ?? null;
+    if (await chat.send(id, text, file)) {
       setDrafts((previous) => ({
         ...previous,
         [id]: previous[id]?.trim() === text ? "" : previous[id],
+      }));
+      setFiles((previous) => ({
+        ...previous,
+        [id]: previous[id] === file ? null : previous[id],
       }));
     }
   }
@@ -165,6 +171,10 @@ export default function ChatPage({
                 key={selected.id}
                 name={selected.name}
                 draft={drafts[selected.id] ?? ""}
+                file={files[selected.id] ?? null}
+                onFileChange={(file) =>
+                  setFiles((previous) => ({ ...previous, [selected.id]: file }))
+                }
                 pending={chat.sending[selected.id] ?? false}
                 error={chat.sendErrors[selected.id] ?? ""}
                 disabled={!state?.loaded}

@@ -59,3 +59,9 @@ export function timeLabel(date: string) {
     minute: "2-digit",
   });
 }
+// Format a byte count for display next to a file name.
+export function fileSize(bytes: number) {
+  return bytes < 1024 * 1024
+    ? `${Math.max(1, Math.ceil(bytes / 1024))} KB`
+    : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}

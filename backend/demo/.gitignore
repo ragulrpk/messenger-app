@@ -1,4 +1,6 @@
 HELP.md
+# Local-profile uploaded files
+data/
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

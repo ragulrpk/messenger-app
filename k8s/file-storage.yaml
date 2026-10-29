@@ -1,0 +1,47 @@
+# Shared storage for uploaded chat files (kept 60 days, then purged by the backend).
+#
+# Every backend replica mounts this claim, so it must be ReadWriteMany when pods
+# can run on different nodes. On a single-node cluster ReadWriteOnce also works.
+#
+# Without a storage class that provisions volumes automatically, create a
+# PersistentVolume for your physical storage first. Two examples follow; keep one,
+# uncomment it, and set storageClassName: "" on the claim below.
+#
+# --- NFS share on a file server (recommended for multiple nodes) ---
+# apiVersion: v1
+# kind: PersistentVolume
+# metadata:
+#   name: messenger-files
+# spec:
+#   capacity:
+#     storage: 200Gi
+#   accessModes: ["ReadWriteMany"]
+#   persistentVolumeReclaimPolicy: Retain
+#   nfs:
+#     server: fileserver.intranet.local
+#     path: /exports/messenger-files
+# ---
+# --- Local disk on a single server node ---
+# apiVersion: v1
+# kind: PersistentVolume
+# metadata:
+#   name: messenger-files
+# spec:
+#   capacity:
+#     storage: 200Gi
+#   accessModes: ["ReadWriteOnce"]
+#   persistentVolumeReclaimPolicy: Retain
+#   hostPath:
+#     path: /srv/messenger/files
+#     type: DirectoryOrCreate
+# ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: messenger-files
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      # Size for 60 days of uploads; the default per-file limit is 50 MB.
+      storage: 200Gi

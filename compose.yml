@@ -19,6 +19,9 @@ x-backend: &backend
     BOOTSTRAP_USERNAME: ${BOOTSTRAP_USERNAME:-}
     BOOTSTRAP_PASSWORD: ${BOOTSTRAP_PASSWORD:-}
     REDIS_URL: redis://messenger-redis:6379
+  # Both backends share one file volume so either can serve any upload.
+  volumes:
+    - file-data:/var/lib/messenger/files
   depends_on:
     messenger-redis:
       condition: service_healthy
@@ -89,3 +92,4 @@ networks:
 
 volumes:
   redis-data:
+  file-data:

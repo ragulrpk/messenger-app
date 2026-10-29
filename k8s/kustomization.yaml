@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: messenger
 resources:
   - namespace.yaml
+  - file-storage.yaml
   - deployment.yaml
   - redis.yaml
 configMapGenerator:

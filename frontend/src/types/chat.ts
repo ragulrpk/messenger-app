@@ -33,7 +33,14 @@ export interface ChatMessage {
   senderName: string;
   text: string;
   sentAt: string;
-  attachments?: File[];
+  attachment?: ChatAttachment | null;
+}
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  contentType: string;
+  size: number;
+  available: boolean;
 }
 export interface Conversation {
   id: string;

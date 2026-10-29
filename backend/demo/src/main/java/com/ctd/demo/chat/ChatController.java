@@ -4,8 +4,16 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.validation.annotation.Validated;
 
@@ -15,8 +23,14 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class ChatController {
     private final ChatService chat;
-    /** Receives the service that owns chat data and access checks. */
-    public ChatController(ChatService chat) { this.chat = chat; }
+    private final ChatFileService files;
+    private final FileStorage storage;
+    /** Receives the services that own chat data, access checks, and stored files. */
+    public ChatController(ChatService chat, ChatFileService files, FileStorage storage) {
+        this.chat = chat;
+        this.files = files;
+        this.storage = storage;
+    }
 
     public record DirectRequest(@NotNull UUID userId) { }
     public record TypingRequest(@NotNull Boolean active) { }
@@ -54,5 +68,24 @@ public class ChatController {
     @PostMapping("/conversations/{id}/messages")
     public Object send(Authentication auth, @PathVariable UUID id, @Valid @RequestBody SendRequest request) {
         return chat.send(auth.getName(), id, request.clientId(), request.text());
+    }
+
+    /** Uploads one file, with an optional caption, as a message in the conversation. */
+    @PostMapping(path = "/conversations/{id}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Object upload(Authentication auth, @PathVariable UUID id, @RequestParam UUID clientId,
+            @RequestParam(defaultValue = "") @Size(max = 4000) String text, @RequestPart MultipartFile file) {
+        return files.upload(auth.getName(), id, clientId, text, file);
+    }
+
+    /** Downloads a file for conversation members; browsers always save it rather than render it as a page. */
+    @GetMapping("/files/{fileId}")
+    public ResponseEntity<Resource> download(Authentication auth, @PathVariable UUID fileId) {
+        var file = chat.download(auth.getName(), fileId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(file.contentType()))
+                .contentLength(file.size())
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(file.name(), StandardCharsets.UTF_8).build().toString())
+                .body(new FileSystemResource(storage.resolve(file.storageKey())));
     }
 }

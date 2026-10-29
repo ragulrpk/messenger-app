@@ -103,6 +103,7 @@ test("persistent chat: directory, failed send, safe retry, catch-up, pagination 
   let sendCount = 0;
   const sentIds = [];
   const typingRequests = [];
+  const uploads = [];
   let messages = [];
   const conversation = () => ({
     id: "12345678-1234-1234-1234-123456789abc",
@@ -140,6 +141,35 @@ test("persistent chat: directory, failed send, safe retry, catch-up, pagination 
       assert.equal(options.headers["X-CSRF-TOKEN"], "token");
       typingRequests.push(JSON.parse(options.body));
       return response({ accepted: true });
+    }
+    if (route.pathname.endsWith("/files")) {
+      assert.ok(options.body instanceof FormData, "uploads are multipart");
+      assert.equal(options.headers["Content-Type"], undefined);
+      assert.equal(options.headers["X-CSRF-TOKEN"], "token");
+      const file = options.body.get("file");
+      uploads.push({
+        clientId: options.body.get("clientId"),
+        text: options.body.get("text"),
+        name: file.name,
+      });
+      const message = {
+        id: `message-${messages.length + 1}`,
+        sequence: messages.length + 1,
+        clientId: options.body.get("clientId"),
+        text: options.body.get("text"),
+        senderId: "alice",
+        senderName: "Alice",
+        sentAt: "2026-09-11T12:00:00Z",
+        attachment: {
+          id: "file-1",
+          name: file.name,
+          contentType: "application/pdf",
+          size: file.size,
+          available: true,
+        },
+      };
+      messages.push(message);
+      return response(message);
     }
     if (options.method === "POST") {
       const body = JSON.parse(options.body);
@@ -245,8 +275,8 @@ test("persistent chat: directory, failed send, safe retry, catch-up, pagination 
     assert.equal(document.querySelector("h1").textContent, "Bob");
     assert.match(document.body.textContent, /beginning of your conversation/);
     assert.equal(
-      document.querySelector('[aria-label="Attachments coming soon"]').disabled,
-      true,
+      document.querySelector('[aria-label="Attach a file"]').disabled,
+      false,
     );
     const draft = document.getElementById("chat-draft");
     await input(draft, "Hello Bob");
@@ -383,6 +413,34 @@ test("persistent chat: directory, failed send, safe retry, catch-up, pagination 
         .textContent.includes("Hello Bob"),
       true,
     );
+    const picker = document.getElementById("chat-file");
+    const pick = (file) =>
+      act(async () => {
+        Object.defineProperty(picker, "files", {
+          value: [file],
+          configurable: true,
+        });
+        picker.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+      });
+    await pick(new File(["MZ"], "setup.exe"));
+    assert.match(
+      document.querySelector('[role="alert"]').textContent,
+      /not allowed/,
+    );
+    assert.equal(document.querySelector(".pending-attachments"), null);
+    await pick(new File(["%PDF-1.7"], "report.pdf"));
+    assert.match(
+      document.querySelector(".pending-attachments").textContent,
+      /report\.pdf/,
+    );
+    await click('[aria-label="Send message"]');
+    assert.equal(uploads.length, 1, "a file can be sent without a caption");
+    assert.equal(uploads[0].text, "");
+    assert.equal(uploads[0].name, "report.pdf");
+    assert.equal(document.querySelector(".pending-attachments"), null);
+    const download = document.querySelector(".file-attachment");
+    assert.equal(download.getAttribute("href"), "/api/v1/chat/files/file-1");
+    assert.equal(download.getAttribute("download"), "report.pdf");
     await input(document.getElementById("chat-draft"), "private draft");
     await renderUser("eve");
     assert.equal(

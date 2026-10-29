@@ -3,6 +3,7 @@ import {
   getMessages,
   listConversations,
   openDirect,
+  sendFile,
   sendMessage,
 } from "../../services/chatService";
 import type { ConversationSummary } from "../../services/chatService";
@@ -52,9 +53,9 @@ export default function useMessaging(
   const alive = useRef(false);
   const cursors = useRef<Record<string, { first: number; last: number }>>({});
   const sendingIds = useRef(new Set<string>());
-  const attempts = useRef<Record<string, { clientId: string; text: string }>>(
-    {},
-  );
+  const attempts = useRef<
+    Record<string, { clientId: string; text: string; file: File | null }>
+  >({});
   const listBusy = useRef(false);
   const listQueued = useRef(false);
   const refreshHistory = useRef<(() => void) | null>(null);
@@ -307,20 +308,20 @@ export default function useMessaging(
       olderBusy.current.delete(id);
     }
   }
-  // Send a message with a stable retry ID and update the conversation.
-  async function send(id: string, text: string) {
+  // Send a message or file with a stable retry ID and update the conversation.
+  async function send(id: string, text: string, file: File | null = null) {
     if (sendingIds.current.has(id)) return false;
     sendingIds.current.add(id);
-    if (attempts.current[id]?.text !== text)
-      attempts.current[id] = { text, clientId: crypto.randomUUID() };
+    const attempt = attempts.current[id];
+    if (attempt?.text !== text || attempt.file !== file)
+      attempts.current[id] = { text, file, clientId: crypto.randomUUID() };
     setSending((previous) => ({ ...previous, [id]: true }));
     setSendErrors((previous) => ({ ...previous, [id]: "" }));
     try {
-      const message = await sendMessage(
-        id,
-        attempts.current[id].clientId,
-        text,
-      );
+      const { clientId } = attempts.current[id];
+      const message = file
+        ? await sendFile(id, clientId, file, text)
+        : await sendMessage(id, clientId, text);
       if (!alive.current) return false;
       setConversations((previous) =>
         previous.map((c) =>
