@@ -42,9 +42,13 @@ test("live events use wss, reconnect, refresh on ready and clean up on account c
   }
   window.WebSocket = Socket;
   let refreshes = 0;
+  const typing = [];
   let expired = 0;
   window.addEventListener("messenger:session-expired", () => expired++);
-  const stop = connectChatEvents(() => refreshes++);
+  const stop = connectChatEvents(
+    () => refreshes++,
+    (id, active) => typing.push({ id, active }),
+  );
   try {
     assert.equal(
       instances[0].url,
@@ -55,6 +59,15 @@ test("live events use wss, reconnect, refresh on ready and clean up on account c
     instances[0].receive("untrusted-command");
     instances[0].receive("refresh");
     assert.equal(refreshes, 2);
+    const id = "12345678-1234-1234-1234-123456789abc";
+    instances[0].receive(`typing:${id}:true`);
+    instances[0].receive(`typing:${id}:false`);
+    instances[0].receive("typing:invalid:true");
+    assert.deepEqual(typing, [
+      { id, active: true },
+      { id, active: false },
+    ]);
+    assert.equal(refreshes, 2, "typing does not refetch message history");
     instances[0].close(1006);
     const retry = [...timers.entries()].find(([, value]) => value.delay < 2000);
     assert.ok(retry);

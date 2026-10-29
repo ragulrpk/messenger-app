@@ -8,6 +8,7 @@ import {
 import type { ConversationSummary } from "../../services/chatService";
 import type { ChatMessage, Conversation } from "../../types/chat";
 import { connectChatEvents } from "../../services/chatEvents";
+import useChatTyping from "./useChatTyping";
 
 // Deduplicate messages by ID and sort them in server sequence order.
 export function mergeMessages(
@@ -35,6 +36,7 @@ export default function useMessaging(
   selectedId: string | null,
   onInitialConversation?: (id: string) => void,
 ) {
+  const { isTyping, receiveTyping, updateTyping } = useChatTyping(selectedId);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState("");
@@ -137,8 +139,8 @@ export default function useMessaging(
     return connectChatEvents(() => {
       void refreshList();
       refreshHistory.current?.();
-    });
-  }, [refreshList]);
+    }, receiveTyping);
+  }, [refreshList, receiveTyping]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -354,6 +356,8 @@ export default function useMessaging(
     }
   }
   return {
+    isTyping,
+    updateTyping,
     conversations,
     setConversations,
     listLoading,

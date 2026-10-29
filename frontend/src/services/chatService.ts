@@ -114,3 +114,8 @@ export const sendMessage = (id: string, clientId: string, text: string) =>
     clientId,
     text,
   });
+
+export const sendTyping = (id: string, active: boolean) =>
+  chatRequest<{ accepted: boolean }>(`${base}/conversations/${id}/typing`, {
+    active,
+  });

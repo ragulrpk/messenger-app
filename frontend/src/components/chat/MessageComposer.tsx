@@ -6,6 +6,7 @@ interface Props {
   disabled?: boolean;
   onDraftChange: (value: string) => void;
   onSend: (text: string) => void;
+  onBlur?: () => void;
 }
 // Render the text draft and send controls for a conversation.
 export default function MessageComposer({
@@ -16,6 +17,7 @@ export default function MessageComposer({
   disabled,
   onDraftChange,
   onSend,
+  onBlur,
 }: Props) {
   // Submit a nonempty draft when sending is allowed.
   function send() {
@@ -57,6 +59,7 @@ export default function MessageComposer({
           value={draft}
           disabled={pending || disabled}
           onChange={(event) => onDraftChange(event.target.value)}
+          onBlur={onBlur}
           onKeyDown={(event) => {
             if (
               event.key === "Enter" &&

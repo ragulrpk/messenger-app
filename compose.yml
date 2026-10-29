@@ -1,0 +1,91 @@
+name: messenger-local-cluster
+
+# Both instances use the same image, build context, and runtime settings.
+x-backend: &backend
+  image: messenger-local-backend:latest
+  build:
+    context: ./backend/demo
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  stop_grace_period: 40s
+  environment:
+    DB_URL: jdbc:postgresql://host.docker.internal:5432/messenger
+    DB_USERNAME: ${DB_USERNAME:?Set DB_USERNAME in the root .env file}
+    DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the root .env file}
+    SERVER_PORT: "8080"
+    SERVER_ADDRESS: 0.0.0.0
+    FRONTEND_ORIGIN: http://localhost,http://127.0.0.1
+    # Passed through as requested; account initialization is local-profile-only.
+    BOOTSTRAP_USERNAME: ${BOOTSTRAP_USERNAME:-}
+    BOOTSTRAP_PASSWORD: ${BOOTSTRAP_PASSWORD:-}
+    REDIS_URL: redis://messenger-redis:6379
+  depends_on:
+    messenger-redis:
+      condition: service_healthy
+  healthcheck:
+    # curl is installed explicitly by the existing backend Dockerfile.
+    test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--max-time", "4", "http://localhost:8080/actuator/health"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 60s
+  networks:
+    - messenger-network
+
+services:
+  messenger-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:8080"
+    depends_on:
+      messenger-backend-1:
+        condition: service_healthy
+      messenger-backend-2:
+        condition: service_healthy
+    healthcheck:
+      # BusyBox wget is provided by the existing Alpine runtime image.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - messenger-network
+
+  messenger-backend-1:
+    <<: *backend
+    ports:
+      - "8080:8080"
+
+  messenger-backend-2:
+    <<: *backend
+    ports:
+      - "8081:8080"
+
+  messenger-redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    # Host debugging only; application connections use the bridge network.
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -qx PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - messenger-network
+
+networks:
+  messenger-network:
+    driver: bridge
+
+volumes:
+  redis-data:

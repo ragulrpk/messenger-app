@@ -19,6 +19,7 @@ public class ChatController {
     public ChatController(ChatService chat) { this.chat = chat; }
 
     public record DirectRequest(@NotNull UUID userId) { }
+    public record TypingRequest(@NotNull Boolean active) { }
     public record SendRequest(@NotNull UUID clientId, @NotBlank @Size(max = 4000) String text) { }
 
     /** Searches other enabled users in the directory. */
@@ -43,6 +44,12 @@ public class ChatController {
             @RequestParam(required = false) Long before, @RequestParam(required = false) Long after) {
         return chat.history(auth.getName(), id, before, after);
     }
+    @PostMapping("/conversations/{id}/typing")
+    public Object typing(Authentication auth, @PathVariable UUID id, @Valid @RequestBody TypingRequest request) {
+        chat.typing(auth.getName(), id, request.active());
+        return java.util.Map.of("accepted", true);
+    }
+
     /** Sends a validated message to a conversation. */
     @PostMapping("/conversations/{id}/messages")
     public Object send(Authentication auth, @PathVariable UUID id, @Valid @RequestBody SendRequest request) {

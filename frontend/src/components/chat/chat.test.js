@@ -85,6 +85,12 @@ test("persistent chat: directory, failed send, safe retry, catch-up, pagination 
   window.WebSocket = LiveSocket;
   const originalFetch = globalThis.fetch;
   const intervals = new Map();
+  const originalTimeout = window.setTimeout.bind(window);
+  let expireTyping;
+  window.setTimeout = (callback, delay, ...args) => {
+    if (delay === 5000) expireTyping = callback;
+    return originalTimeout(callback, delay, ...args);
+  };
   window.setInterval = (callback, delay) => {
     intervals.set(delay, callback);
     return delay;
@@ -96,9 +102,10 @@ test("persistent chat: directory, failed send, safe retry, catch-up, pagination 
   let failHistory = false;
   let sendCount = 0;
   const sentIds = [];
+  const typingRequests = [];
   let messages = [];
   const conversation = () => ({
-    id: "conversation",
+    id: "12345678-1234-1234-1234-123456789abc",
     targetId: "bob",
     name: "Bob",
     updatedAt: messages.at(-1)?.sentAt ?? "2026-09-11T00:00:00Z",
@@ -129,6 +136,11 @@ test("persistent chat: directory, failed send, safe retry, catch-up, pagination 
         conversations: opened && actor === "alice" ? [conversation()] : [],
         nextCursor: null,
       });
+    if (route.pathname.endsWith("/typing")) {
+      assert.equal(options.headers["X-CSRF-TOKEN"], "token");
+      typingRequests.push(JSON.parse(options.body));
+      return response({ accepted: true });
+    }
     if (options.method === "POST") {
       const body = JSON.parse(options.body);
       sendCount++;
@@ -238,6 +250,37 @@ test("persistent chat: directory, failed send, safe retry, catch-up, pagination 
     );
     const draft = document.getElementById("chat-draft");
     await input(draft, "Hello Bob");
+    assert.deepEqual(typingRequests.at(-1), { active: true });
+    await input(draft, "Hello Bob!");
+    await input(draft, "Hello Bob");
+    assert.equal(typingRequests.length, 1, "keystrokes are throttled");
+    await act(async () =>
+      liveSockets.at(-1).receive(`typing:${conversation().id}:true`),
+    );
+    assert.match(document.body.textContent, /Bob is typing/);
+    await act(async () =>
+      liveSockets
+        .at(-1)
+        .receive("typing:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:false"),
+    );
+    assert.match(
+      document.body.textContent,
+      /Bob is typing/,
+      "other conversations cannot clear the indicator",
+    );
+    await act(async () =>
+      liveSockets.at(-1).receive(`typing:${conversation().id}:false`),
+    );
+    assert.doesNotMatch(document.body.textContent, /Bob is typing/);
+    await act(async () =>
+      liveSockets.at(-1).receive(`typing:${conversation().id}:true`),
+    );
+    await act(async () => expireTyping());
+    assert.doesNotMatch(
+      document.body.textContent,
+      /Bob is typing/,
+      "lost stop events expire",
+    );
     await act(async () => {
       for (let i = 0; i < 2; i++)
         draft.dispatchEvent(
@@ -253,12 +296,27 @@ test("persistent chat: directory, failed send, safe retry, catch-up, pagination 
       "duplicate Enter is ignored while send is pending",
     );
     assert.equal(draft.value, "Hello Bob", "failed send preserves draft");
+    assert.deepEqual(
+      typingRequests.at(-1),
+      { active: false },
+      "send stops typing even if the send fails",
+    );
     assert.match(
       document.querySelector('[role="alert"]').textContent,
       /Unable to reach/,
     );
     await click('[aria-label="Back to conversations"]');
+    await act(async () =>
+      liveSockets.at(-1).receive(`typing:${conversation().id}:true`),
+    );
     await click(".conversation-select");
+    assert.match(
+      document.body.textContent,
+      /Bob is typing/,
+      "typing received before opening the chat is retained",
+    );
+    await act(async () => expireTyping());
+    assert.doesNotMatch(document.body.textContent, /Bob is typing/);
     assert.equal(document.getElementById("chat-draft").value, "Hello Bob");
     await click('[aria-label="Retry send"]');
     assert.equal(

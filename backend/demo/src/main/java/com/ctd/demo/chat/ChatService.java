@@ -217,6 +217,15 @@ public class ChatService {
         return retry;
     }
 
+    public void typing(String username, UUID conversation, boolean active) {
+        UUID user = actor(username);
+        member(user, conversation);
+        events.publishEvent(new ChatTyping(db.queryForList(
+                "SELECT u.username FROM chat_members m JOIN app_users u ON u.id=m.user_id "
+                        + "WHERE m.conversation_id=? AND m.user_id<>? AND u.enabled=true",
+                String.class, conversation, user), conversation, active));
+    }
+
     /** 2026-09-23: Resolve recipients from membership, then notify only after the transaction commits. */
     private void changed(UUID conversation) {
         events.publishEvent(new ChatChanged(db.queryForList(

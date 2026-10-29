@@ -78,6 +78,7 @@ export default function ChatPage({
   }
   // Send a message and clear its draft after success.
   async function send(id: string, text: string) {
+    chat.updateTyping(false);
     if (await chat.send(id, text)) {
       setDrafts((previous) => ({
         ...previous,
@@ -155,6 +156,11 @@ export default function ChatPage({
                   userId={user.id}
                 />
               )}
+              {chat.isTyping && (
+                <p className="messaging-notice" role="status">
+                  {selected.name} is typing…
+                </p>
+              )}
               <MessageComposer
                 key={selected.id}
                 name={selected.name}
@@ -162,12 +168,14 @@ export default function ChatPage({
                 pending={chat.sending[selected.id] ?? false}
                 error={chat.sendErrors[selected.id] ?? ""}
                 disabled={!state?.loaded}
-                onDraftChange={(value) =>
+                onBlur={() => chat.updateTyping(false)}
+                onDraftChange={(value) => {
+                  chat.updateTyping(value.trim().length > 0);
                   setDrafts((previous) => ({
                     ...previous,
                     [selected.id]: value,
-                  }))
-                }
+                  }));
+                }}
                 onSend={(text) => void send(selected.id, text)}
               />
             </>

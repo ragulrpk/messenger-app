@@ -1,0 +1,62 @@
+# Single persistent Redis instance for the local Kubernetes test.
+# No host port is exposed. Use an authenticated managed Redis service for production.
+apiVersion: v1
+kind: Service
+metadata:
+  name: messenger-redis
+spec:
+  selector:
+    app: messenger-redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: messenger-redis
+spec:
+  serviceName: messenger-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: messenger-redis
+  template:
+    metadata:
+      labels:
+        app: messenger-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:8-alpine
+          args: ["redis-server", "--appendonly", "yes"]
+          ports:
+            - name: redis
+              containerPort: 6379
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

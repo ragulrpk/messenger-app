@@ -23,10 +23,12 @@ The CI configuration uses Node.js 24 and Java 25. Frontend commands run from `fr
 
 Backend commands run from `backend/demo`: `./mvnw verify` and `./mvnw -Pintegration-tests verify`. On Windows use `mvnw.cmd`, or an installed Maven executable. The integration profile requires Docker for PostgreSQL and Redis.
 
-See the frontend and backend README files for application-specific instructions. Root-level `WINDOWS-DOCKER.md` documents Windows setup; `PRODUCTION.md` documents production deployment and operations. The dated project review records the assessment before this repository restructuring, not a production certification.
+See the frontend and backend README files for application-specific instructions.
 
 ## Configuration and repository hygiene
 
 Copy the appropriate `.env.*.example` template to a local environment file and configure it for your environment. Actual `.env` files, dependencies, build output and machine-specific IDE settings are ignored. Environment example files, Maven wrapper configuration and the frontend lockfile are included.
 
-The repository has not been published. Configure a Git remote and create the initial commit when ready; the GitHub Actions workflow will run on a push or pull request after publication.
+The configured Git remote is `https://github.com/ragulrpk/messenger-app.git`.
+GitHub Actions runs checks on pushes and pull requests; successful pushes to
+`main` publish frontend and backend images to GHCR.

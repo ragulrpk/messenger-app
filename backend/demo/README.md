@@ -40,7 +40,7 @@ Remove these environment variables after stopping the process. Provisioning is e
 
 ## Controller flow
 
-As of 2026-09-23, authenticated `POST /api/v1/users/password` accepts `{ currentPassword, newPassword, confirmPassword }` with CSRF protection. It verifies and changes only the session owner's password, returns 204, and makes all older credential-bound sessions invalid. See `../../PASSWORD-CHANGE.md`. Deploying this feature requires existing users to sign in again; no schema migration is needed.
+As of 2026-09-23, authenticated `POST /api/v1/users/password` accepts `{ currentPassword, newPassword, confirmPassword }` with CSRF protection. It verifies and changes only the session owner's password, returns 204, and makes all older credential-bound sessions invalid. Deploying this feature requires existing users to sign in again; no schema migration is needed.
 
 `AuthController → AuthService → AuthenticationManager → UserDetailsService → UserRepository → PostgreSQL`
 
@@ -63,7 +63,7 @@ Terminate HTTPS at your trusted ingress; Secure cookies require HTTPS. Prefer se
 
 The production rate limiter stores per-address counters in Redis, so limits apply across backend instances. Spring Session stores authenticated sessions in the same Redis service, allowing requests to move safely between instances. The local and test profiles use bounded in-memory rate limiting and servlet sessions, so local development does not require Redis. Tomcat resolves `X-Forwarded-For` only when the connecting peer matches `TRUSTED_PROXY_PATTERN`, a Java regular expression matching your ingress IP addresses (for example, `10[.]0[.]0[.]10`). Production defaults to trusting no proxies. Set the pattern to the ingress addresses, make the ingress overwrite client-supplied forwarding headers, and restrict direct backend access to that ingress.
 
-Provision production users through an approved administrative process with BCrypt hashes. The canonical `ragul` account is the sole administrator and can reset other users' passwords after reauthentication and identity verification; see [Administrator password recovery](../../ADMIN-PASSWORD-RESET.md). Public signup, email recovery, MFA, and a dedicated audit-history interface remain later product phases. Successful administrator resets are recorded in application logs. The repository root contains deployment and operational guidance in `PRODUCTION.md`.
+Provision production users through an approved administrative process with BCrypt hashes. The canonical `ragul` account is the sole administrator and can reset other users' passwords after reauthentication and identity verification. Public signup, email recovery, MFA, and a dedicated audit-history interface remain later product phases. Successful administrator resets are recorded in application logs.
 
 ## Tests
 
@@ -99,7 +99,7 @@ All chat routes require an authenticated, enabled account. The backend obtains t
 | GET | `/api/v1/chat/conversations/{id}/messages` | Optional `before` OR `after` sequence | `{ messages, hasMore }`, 50 per page in ascending order |
 | POST | `/api/v1/chat/conversations/{id}/messages` | `{ clientId, text }` | Saved message, including server ID, sequence, sender, timestamp |
 
-`userId`, conversation IDs, and `clientId` are UUIDs. Text must be nonblank and at most 4000 characters. Omit message cursors for the latest page; `before` loads older history and `after` catches up with incoming messages. Continue catch-up when `hasMore` is true. As of 2026-09-23, `/api/v1/chat/events` provides authenticated WebSocket refresh hints after commit, with Redis Pub/Sub across production instances. Message sending and retrieval remain HTTP-based; polling provides reconciliation fallback. See `../../WEBSOCKET-IMPLEMENTATION.md`.
+`userId`, conversation IDs, and `clientId` are UUIDs. Text must be nonblank and at most 4000 characters. Omit message cursors for the latest page; `before` loads older history and `after` catches up with incoming messages. Continue catch-up when `hasMore` is true. As of 2026-09-23, `/api/v1/chat/events` provides authenticated WebSocket refresh hints after commit, with Redis Pub/Sub across production instances. Message sending and retrieval remain HTTP-based; polling provides reconciliation fallback.
 
 Conversation summaries contain `{ id, targetId, name, updatedAt, lastMessage }`. Message objects contain `{ id, sequence, senderId, senderName, clientId, text, sentAt }`. `lastMessage` is null for a newly created empty conversation.
 

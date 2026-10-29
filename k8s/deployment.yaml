@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: messenger-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: messenger-backend
+  template:
+    metadata:
+      labels:
+        app: messenger-backend
+    spec:
+      terminationGracePeriodSeconds: 45
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: backend
+          image: messenger-backend:k8s-v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: messenger-config
+            - secretRef:
+                name: messenger-secrets
+          env:
+            # Activate the shared session, rate limiter and event implementations.
+            - name: SPRING_PROFILES_ACTIVE
+              value: kubernetes
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: messenger-backend
+spec:
+  selector:
+    app: messenger-backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: messenger-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: messenger-frontend
+  template:
+    metadata:
+      labels:
+        app: messenger-frontend
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: frontend
+          image: messenger-frontend:k8s-v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: nginx
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+      volumes:
+        - name: nginx
+          configMap:
+            name: messenger-nginx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: messenger-frontend
+spec:
+  selector:
+    app: messenger-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
