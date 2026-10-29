@@ -152,6 +152,43 @@ class ChatWebSocketTests {
     }
 
     @Test
+    void typingRequiresMembershipAndCsrfAndReachesOnlyTheOtherParticipant() throws Exception {
+        try (var alice = login("ws-alice"); var other = login("ws-bob"); var eve = login("ws-eve")) {
+            var a = new Inbox(); var b = new Inbox(); var e = new Inbox();
+            var wa = connect(alice, a, "http://localhost:5173");
+            var wb = connect(other, b, "http://localhost:5173");
+            var we = connect(eve, e, "http://localhost:5173");
+            try {
+                assertThat(a.next()).isEqualTo("ready");
+                assertThat(b.next()).isEqualTo("ready");
+                assertThat(e.next()).isEqualTo("ready");
+                UUID conversation = chat.direct("ws-alice", bob).id();
+                assertThat(a.next()).isEqualTo("refresh");
+                assertThat(b.next()).isEqualTo("refresh");
+                URI endpoint = URI.create(url("/api/v1/chat/conversations/" + conversation + "/typing"));
+                for (boolean active : new boolean[]{true, false}) {
+                    var result = alice.send(HttpRequest.newBuilder(endpoint)
+                            .header("X-CSRF-TOKEN", token(alice)).header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString("{\"active\":" + active + "}"))
+                            .build(), HttpResponse.BodyHandlers.discarding());
+                    assertThat(result.statusCode()).isEqualTo(200);
+                    assertThat(b.next()).isEqualTo("typing:" + conversation + ":" + active);
+                }
+                assertThat(eve.send(HttpRequest.newBuilder(endpoint)
+                        .header("X-CSRF-TOKEN", token(eve)).header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString("{\"active\":true}"))
+                        .build(), HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(404);
+                assertThat(alice.send(HttpRequest.newBuilder(endpoint).header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString("{\"active\":true}"))
+                        .build(), HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(403);
+                assertThat(a.events.poll(200, TimeUnit.MILLISECONDS)).isNull();
+                assertThat(e.events).isEmpty();
+                assertThat(chat.history("ws-alice", conversation, null, null).messages()).isEmpty();
+            } finally { wa.abort(); wb.abort(); we.abort(); }
+        }
+    }
+
+    @Test
     void logoutRevocationAndDisabledAccountCloseExistingSockets() throws Exception {
         try (var alice = login("ws-alice"); var other = login("ws-bob"); var eve = login("ws-eve")) {
             Inbox a = new Inbox(), b = new Inbox(), e = new Inbox();

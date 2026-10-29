@@ -1,0 +1,36 @@
+name: Deploy to Docker Desktop Kubernetes
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Full 40-character commit SHA from a successful main-branch CI publication
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: messenger-docker-desktop-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Windows, X64, messenger-local]
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Deploy the published image version
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          $taskRegistry = "ghcr.io/$($env:OWNER.ToLowerInvariant())"
+          ./k8s/deploy.ps1 -ImageTag $env:IMAGE_TAG -RegistryNamespace $taskRegistry -Context docker-desktop

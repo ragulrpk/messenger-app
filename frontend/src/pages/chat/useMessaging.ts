@@ -3,11 +3,13 @@ import {
   getMessages,
   listConversations,
   openDirect,
+  sendFile,
   sendMessage,
 } from "../../services/chatService";
 import type { ConversationSummary } from "../../services/chatService";
 import type { ChatMessage, Conversation } from "../../types/chat";
 import { connectChatEvents } from "../../services/chatEvents";
+import useChatTyping from "./useChatTyping";
 
 // Deduplicate messages by ID and sort them in server sequence order.
 export function mergeMessages(
@@ -35,6 +37,7 @@ export default function useMessaging(
   selectedId: string | null,
   onInitialConversation?: (id: string) => void,
 ) {
+  const { isTyping, receiveTyping, updateTyping } = useChatTyping(selectedId);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState("");
@@ -50,9 +53,9 @@ export default function useMessaging(
   const alive = useRef(false);
   const cursors = useRef<Record<string, { first: number; last: number }>>({});
   const sendingIds = useRef(new Set<string>());
-  const attempts = useRef<Record<string, { clientId: string; text: string }>>(
-    {},
-  );
+  const attempts = useRef<
+    Record<string, { clientId: string; text: string; file: File | null }>
+  >({});
   const listBusy = useRef(false);
   const listQueued = useRef(false);
   const refreshHistory = useRef<(() => void) | null>(null);
@@ -137,8 +140,8 @@ export default function useMessaging(
     return connectChatEvents(() => {
       void refreshList();
       refreshHistory.current?.();
-    });
-  }, [refreshList]);
+    }, receiveTyping);
+  }, [refreshList, receiveTyping]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -305,20 +308,20 @@ export default function useMessaging(
       olderBusy.current.delete(id);
     }
   }
-  // Send a message with a stable retry ID and update the conversation.
-  async function send(id: string, text: string) {
+  // Send a message or file with a stable retry ID and update the conversation.
+  async function send(id: string, text: string, file: File | null = null) {
     if (sendingIds.current.has(id)) return false;
     sendingIds.current.add(id);
-    if (attempts.current[id]?.text !== text)
-      attempts.current[id] = { text, clientId: crypto.randomUUID() };
+    const attempt = attempts.current[id];
+    if (attempt?.text !== text || attempt.file !== file)
+      attempts.current[id] = { text, file, clientId: crypto.randomUUID() };
     setSending((previous) => ({ ...previous, [id]: true }));
     setSendErrors((previous) => ({ ...previous, [id]: "" }));
     try {
-      const message = await sendMessage(
-        id,
-        attempts.current[id].clientId,
-        text,
-      );
+      const { clientId } = attempts.current[id];
+      const message = file
+        ? await sendFile(id, clientId, file, text)
+        : await sendMessage(id, clientId, text);
       if (!alive.current) return false;
       setConversations((previous) =>
         previous.map((c) =>
@@ -354,6 +357,8 @@ export default function useMessaging(
     }
   }
   return {
+    isTyping,
+    updateTyping,
     conversations,
     setConversations,
     listLoading,

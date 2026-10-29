@@ -14,6 +14,8 @@ import java.util.concurrent.Executor;
 @Component
 public class ChatEventDelivery {
     public static final String CHANNEL = "messenger:chat:changed:v1";
+    public static final String TYPING_CHANNEL = "messenger:chat:typing:v1";
+    private static final tools.jackson.databind.ObjectMapper JSON = new tools.jackson.databind.ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(ChatEventDelivery.class);
     private final ChatWebSocketHandler sockets;
     private final StringRedisTemplate redis;
@@ -46,6 +48,17 @@ public class ChatEventDelivery {
                 // Polling reconciles missed hints; do not log message bodies or participant identities.
                 log.warn("Chat live notification unavailable; clients will reconcile over HTTP");
             }
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void typing(ChatTyping event) {
+        // Publish synchronously so start/stop hints from sequential requests keep their order.
+        try {
+            if (environment.matchesProfiles("local", "test")) sockets.typing(event);
+            else redis.convertAndSend(TYPING_CHANNEL, JSON.writeValueAsString(event));
+        } catch (RuntimeException exception) {
+            log.debug("Typing hint unavailable; the client indicator will expire");
         }
     }
 }

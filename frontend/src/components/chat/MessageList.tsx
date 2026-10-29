@@ -39,13 +39,11 @@ export default function MessageList({
             <strong>{m.senderId === userId ? "You" : m.senderName}</strong>
           )}
           {m.text && <p>{m.text}</p>}
-          {m.attachments?.length ? (
+          {m.attachment && (
             <div className="message-attachments">
-              {m.attachments.map((file, index) => (
-                <FileAttachment key={index} file={file} />
-              ))}
+              <FileAttachment attachment={m.attachment} />
             </div>
-          ) : null}
+          )}
           {showTimestamps && (
             <time
               dateTime={m.sentAt}

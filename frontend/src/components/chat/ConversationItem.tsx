@@ -33,7 +33,7 @@ export default function ConversationItem({
           </strong>
           <span className="preview">
             {preview?.text ||
-              preview?.attachments?.map((file) => file.name).join(", ") ||
+              (preview?.attachment && `📎 ${preview.attachment.name}`) ||
               "Start a conversation"}
           </span>
           {(c.pinned || c.muted) && (

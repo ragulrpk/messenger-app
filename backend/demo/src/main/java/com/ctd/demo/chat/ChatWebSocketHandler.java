@@ -100,6 +100,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 && username.equals(s.getPrincipal().getName())).forEach(s -> deliver(s, "refresh"));
     }
 
+    public void typing(ChatTyping event) {
+        String hint = "typing:" + event.conversationId() + ":" + event.active();
+        sockets.values().stream().filter(s -> s.getPrincipal() != null
+                && event.usernames().contains(s.getPrincipal().getName())).forEach(s -> deliver(s, hint));
+    }
+
     /** Server heartbeat keeps proxies alive and checks idle sessions on each 20-second scheduled pass. */
     @Scheduled(fixedDelay = 20000)
     public void heartbeat() { sockets.values().forEach(s -> deliver(s, "heartbeat")); }

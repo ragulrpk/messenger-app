@@ -18,6 +18,8 @@ services:
       BOOTSTRAP_PASSWORD: ${BOOTSTRAP_PASSWORD:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - file-data:/var/lib/messenger/files
     expose:
       - "8080"
     healthcheck:
@@ -42,3 +44,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+volumes:
+  file-data:

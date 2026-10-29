@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: messenger
+resources:
+  - namespace.yaml
+  - file-storage.yaml
+  - deployment.yaml
+  - redis.yaml
+configMapGenerator:
+  - name: messenger-nginx
+    files:
+      - default.conf=nginx.conf
+  - name: messenger-config
+    literals:
+      - FRONTEND_ORIGIN=http://localhost:8088
+      # HTTP is only for local port-forward testing. Use true with HTTPS.
+      - SERVER_SERVLET_SESSION_COOKIE_SECURE=false

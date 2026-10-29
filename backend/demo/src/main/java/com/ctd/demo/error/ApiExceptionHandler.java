@@ -37,6 +37,12 @@ public class ApiExceptionHandler {
             return error(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "The requested resource was not found.");
         if (exception.getStatusCode().value() == 409)
             return error(HttpStatus.CONFLICT, "REQUEST_CONFLICT", "The request conflicts with existing data.");
+        if (exception.getStatusCode().value() == 410)
+            return error(HttpStatus.GONE, "FILE_EXPIRED", "This file has expired and is no longer available.");
+        if (exception.getStatusCode().value() == 413)
+            return fileTooLarge();
+        if (exception.getStatusCode().value() == 415)
+            return error(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "FILE_TYPE_NOT_ALLOWED", "This file type is not allowed.");
         if (exception.getStatusCode().value() == 429)
             return error(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED", "Too many attempts. Please try again later.");
         if (exception.getStatusCode().value() == 503)
@@ -45,10 +51,20 @@ public class ApiExceptionHandler {
                 "code", "REQUEST_REJECTED", "message", "The request was rejected."));
     }
 
-    /** Reports an invalid path or query parameter as a bad request. */
-    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    /** Reports an invalid, missing, or constraint-violating parameter or multipart part as a bad request. */
+    @ExceptionHandler({org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+            org.springframework.web.bind.MissingServletRequestParameterException.class,
+            org.springframework.web.multipart.support.MissingServletRequestPartException.class,
+            org.springframework.web.method.annotation.HandlerMethodValidationException.class,
+            jakarta.validation.ConstraintViolationException.class})
     ResponseEntity<Map<String, String>> invalidParameter() {
         return error(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid request parameter.");
+    }
+
+    /** Reports an upload rejected by the multipart size limit. */
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    ResponseEntity<Map<String, String>> fileTooLarge() {
+        return error(HttpStatus.CONTENT_TOO_LARGE, "FILE_TOO_LARGE", "The file is larger than the upload limit.");
     }
 
     /** Returns a general unauthorized response for authentication failures. */

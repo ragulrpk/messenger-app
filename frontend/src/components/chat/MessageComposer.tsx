@@ -1,26 +1,50 @@
+import { useRef, useState } from "react";
+import {
+  fileProblem,
+  ALLOWED_FILE_EXTENSIONS,
+} from "../../services/chatService";
+import { fileSize } from "./chatState";
+
 interface Props {
   name: string;
   draft: string;
+  file: File | null;
   pending: boolean;
   error: string;
   disabled?: boolean;
   onDraftChange: (value: string) => void;
+  onFileChange: (file: File | null) => void;
   onSend: (text: string) => void;
+  onBlur?: () => void;
 }
-// Render the text draft and send controls for a conversation.
+// Render the draft, attachment, and send controls for a conversation.
 export default function MessageComposer({
   name,
   draft,
+  file,
   pending,
   error,
   disabled,
   onDraftChange,
+  onFileChange,
   onSend,
+  onBlur,
 }: Props) {
-  // Submit a nonempty draft when sending is allowed.
+  const picker = useRef<HTMLInputElement>(null);
+  const [fileError, setFileError] = useState("");
+  const ready = (!!draft.trim() || !!file) && !pending && !disabled;
+  // Submit a nonempty draft or a chosen file when sending is allowed.
   function send() {
-    if (!draft.trim() || pending || disabled) return;
+    if (!ready) return;
     onSend(draft.trim());
+  }
+  // Accept a picked file only when the server would accept it too.
+  function choose(picked: File | undefined) {
+    if (picker.current) picker.current.value = "";
+    if (!picked) return;
+    const problem = fileProblem(picked);
+    setFileError(problem);
+    if (!problem) onFileChange(picked);
   }
   return (
     <form
@@ -35,14 +59,46 @@ export default function MessageComposer({
           {error} Your draft is kept; use Retry send.
         </p>
       )}
-      {pending && <p role="status">Sending…</p>}
+      {fileError && (
+        <p className="attachment-error" role="alert">
+          {fileError}
+        </p>
+      )}
+      {pending && <p role="status">{file ? "Uploading…" : "Sending…"}</p>}
+      {file && (
+        <ul className="pending-attachments">
+          <li>
+            <span title={file.name}>
+              {file.name} · {fileSize(file.size)}
+            </span>
+            <button
+              type="button"
+              disabled={pending}
+              aria-label={`Remove ${file.name}`}
+              onClick={() => onFileChange(null)}
+            >
+              ×
+            </button>
+          </li>
+        </ul>
+      )}
       <div className="composer-input-row">
+        <input
+          ref={picker}
+          id="chat-file"
+          className="sr-only"
+          type="file"
+          tabIndex={-1}
+          accept={ALLOWED_FILE_EXTENSIONS.map((e) => `.${e}`).join(",")}
+          onChange={(event) => choose(event.target.files?.[0])}
+        />
         <button
           className="attach-button"
           type="button"
-          disabled
-          aria-label="Attachments coming soon"
-          title="File uploads are not available yet"
+          disabled={pending || disabled}
+          aria-label="Attach a file"
+          title="Attach a file (up to 50 MB)"
+          onClick={() => picker.current?.click()}
         >
           ＋
         </button>
@@ -52,11 +108,12 @@ export default function MessageComposer({
         <textarea
           id="chat-draft"
           rows={1}
-          placeholder={`Message ${name}`}
+          placeholder={file ? "Add a caption (optional)" : `Message ${name}`}
           maxLength={4000}
           value={draft}
           disabled={pending || disabled}
           onChange={(event) => onDraftChange(event.target.value)}
+          onBlur={onBlur}
           onKeyDown={(event) => {
             if (
               event.key === "Enter" &&
@@ -70,7 +127,7 @@ export default function MessageComposer({
         />
         <button
           className="send-button"
-          disabled={!draft.trim() || pending || disabled}
+          disabled={!ready}
           type="submit"
           aria-label={error ? "Retry send" : "Send message"}
           title={error ? "Retry send" : "Send message"}
@@ -98,7 +155,7 @@ export default function MessageComposer({
         </button>
       </div>
       <small className="composer-help">
-        Enter to send · Shift+Enter for a new line · Text messages only
+        Enter to send · Shift+Enter for a new line · Files up to 50 MB
       </small>
     </form>
   );

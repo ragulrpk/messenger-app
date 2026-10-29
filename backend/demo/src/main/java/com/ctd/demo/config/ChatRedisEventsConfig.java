@@ -2,6 +2,7 @@ package com.ctd.demo.config;
 
 import com.ctd.demo.chat.ChatEventDelivery;
 import com.ctd.demo.chat.ChatWebSocketHandler;
+import com.ctd.demo.chat.ChatTyping;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Executor;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,6 +24,10 @@ public class ChatRedisEventsConfig {
         container.addMessageListener((message, pattern) ->
                 sockets.changed(new String(message.getBody(), StandardCharsets.UTF_8)),
                 new ChannelTopic(ChatEventDelivery.CHANNEL));
+        var json = new tools.jackson.databind.ObjectMapper();
+        container.addMessageListener((message, pattern) -> sockets.typing(
+                json.readValue(message.getBody(), ChatTyping.class)),
+                new ChannelTopic(ChatEventDelivery.TYPING_CHANNEL));
         return container;
     }
 }

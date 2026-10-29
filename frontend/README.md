@@ -12,12 +12,12 @@ Optional `.env.local` values are documented in `.env.example`. `VITE_AUTH_LOGIN_
 
 ## Direct messaging
 
-For forgotten passwords, login offers administrator-assisted recovery instructions. The existing `ragul` account can open **Settings → Reset a user’s password**. See [Administrator password recovery](../ADMIN-PASSWORD-RESET.md) for operation and limitations.
+For forgotten passwords, login offers administrator-assisted recovery instructions. The existing `ragul` account can open **Settings → Reset a user’s password**.
 
 - Search the real enabled-user directory by name or username. The signed-in user is excluded. Searches show up to 50 matches; refine the query for additional results.
 - Selecting a person creates or restores one server conversation for that pair of users. Both participants share the same history.
 - Text messages are stored in PostgreSQL. Refreshing the browser restores conversation history. Local mock data is retained only as test fixtures and is not used in the application.
-- A session-authenticated WebSocket at `/api/v1/chat/events` now signals saved changes immediately. The UI retrieves authorized data over HTTP, reconnects automatically, and catches up after disconnects. Five-second list and three-second history polling remain as reconciliation fallback while the tab is visible. See `../WEBSOCKET-IMPLEMENTATION.md` for the protocol and deployment checks.
+- A session-authenticated WebSocket at `/api/v1/chat/events` now signals saved changes immediately. The UI retrieves authorized data over HTTP, reconnects automatically, and catches up after disconnects. Five-second list and three-second history polling remain as reconciliation fallback while the tab is visible.
 - Conversations and history load in pages of 50. Use **Load more conversations** or **Load older messages**. Incoming-message catch-up follows the last fetched sequence, including when more than one page arrives while disconnected.
 - The composer accepts 1–4000 characters after trimming. Enter sends, Shift+Enter inserts a newline, and IME composition does not send. Sending disables the composer until acknowledged. Errors preserve the draft and offer **Retry send**. Retrying unchanged text uses the same client identifier, including after switching conversations, so a lost server response does not duplicate the message.
 - Drafts survive switching conversations, mobile Back, and visits to the profile while the chat page remains mounted. Reloading or changing accounts clears unsent drafts and retry identifiers. After an uncertain send and a full reload, check restored history before composing the same message again.
@@ -26,7 +26,7 @@ For forgotten passwords, login offers administrator-assisted recovery instructio
 
 ## Authentication and profile
 
-As of 2026-09-23, Settings → **Change password** opens the form on `/profile#password`. Supply the current password, a different new password (at least 12 characters, at most 72 UTF-8 bytes), and confirmation. Success signs out all older sessions and prompts a fresh login. See `../PASSWORD-CHANGE.md`; this is not a forgotten-password recovery flow.
+As of 2026-09-23, Settings → **Change password** opens the form on `/profile#password`. Supply the current password, a different new password (at least 12 characters, at most 72 UTF-8 bytes), and confirmation. Success signs out all older sessions and prompts a fresh login. This is not a forgotten-password recovery flow.
 
 The frontend fetches CSRF tokens for login, logout, conversation creation, and message sending, and includes cookies on all requests. Passwords and session tokens are not persisted in browser storage. Protected routes restore authentication through `/me`; focus, visibility, cross-tab account changes, and unauthorized chat responses recheck the server session. A failed logout keeps the session visible for retry.
 

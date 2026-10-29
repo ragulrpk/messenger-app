@@ -1,5 +1,8 @@
 /** 2026-09-23: Live invalidation hints; message data still comes from authorized REST requests. */
-export function connectChatEvents(onRefresh: () => void) {
+export function connectChatEvents(
+  onRefresh: () => void,
+  onTyping?: (conversationId: string, active: boolean) => void,
+) {
   if (typeof window.WebSocket !== "function") return () => {};
   const auth = import.meta.env?.VITE_AUTH_LOGIN_URL || "/api/v1/users/login";
   const base =
@@ -45,6 +48,10 @@ export function connectChatEvents(onRefresh: () => void) {
           attempt = 0;
           onRefresh(); // Recover changes missed before connection or during a disconnect.
         } else if (event.data === "refresh") onRefresh();
+        else if (typeof event.data === "string") {
+          const hint = /^typing:([0-9a-f-]{36}):(true|false)$/.exec(event.data);
+          if (hint) onTyping?.(hint[1], hint[2] === "true");
+        }
       };
       current.onerror = () => current.close();
       current.onclose = (event) => {

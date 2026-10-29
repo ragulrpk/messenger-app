@@ -8,7 +8,9 @@ FROM eclipse-temurin:25-jre
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --system --uid 10001 --create-home messenger
+    && useradd --system --uid 10001 --create-home messenger     && install --directory --owner 10001 /var/lib/messenger/files
+# Uploaded files; mount a shared volume here so every replica sees the same files.
+ENV FILE_STORAGE_PATH=/var/lib/messenger/files
 WORKDIR /app
 COPY --from=build /workspace/target/*.jar /app/messenger.jar
 USER 10001

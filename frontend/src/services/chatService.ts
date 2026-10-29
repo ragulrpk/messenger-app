@@ -20,10 +20,47 @@ export interface ConversationPage {
   nextCursor: string | null;
 }
 
+// Keep in step with app.files.max-size and app.files.allowed-extensions on the server.
+export const MAX_FILE_BYTES = 50 * 1024 * 1024;
+export const ALLOWED_FILE_EXTENSIONS = [
+  "pdf",
+  "txt",
+  "csv",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx",
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "webp",
+  "zip",
+];
+
+// Explain why a file cannot be uploaded, or return an empty string when it can.
+export function fileProblem(file: File) {
+  const extension = file.name.includes(".")
+    ? file.name.split(".").pop()!.toLowerCase()
+    : "";
+  if (!ALLOWED_FILE_EXTENSIONS.includes(extension))
+    return `This file type is not allowed. Allowed: ${ALLOWED_FILE_EXTENSIONS.join(", ")}.`;
+  if (file.size === 0) return "This file is empty.";
+  if (file.size > MAX_FILE_BYTES) return "Files must be 50 MB or smaller.";
+  return "";
+}
+
 // Call the chat API with session cookies, CSRF protection, and error handling.
-export async function chatRequest<T>(url: string, body?: unknown): Promise<T> {
+export async function chatRequest<T>(
+  url: string,
+  body?: unknown,
+  timeoutMs = 15000,
+): Promise<T> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const multipart = body instanceof FormData;
   try {
     const headers: Record<string, string> = { Accept: "application/json" };
     if (body !== undefined) {
@@ -46,14 +83,17 @@ export async function chatRequest<T>(url: string, body?: unknown): Promise<T> {
       )
         throw new Error("Invalid session response. Refresh and try again.");
       headers[csrf.headerName] = csrf.token;
-      headers["Content-Type"] = "application/json";
+      // The browser sets the multipart boundary itself.
+      if (!multipart) headers["Content-Type"] = "application/json";
     }
     const response = await fetch(url, {
       method: body === undefined ? "GET" : "POST",
       headers,
       credentials: "include",
       signal: controller.signal,
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(body === undefined
+        ? {}
+        : { body: multipart ? body : JSON.stringify(body) }),
     });
     if (response.status === 401) {
       window.dispatchEvent(new window.Event("messenger:session-expired"));
@@ -68,6 +108,10 @@ export async function chatRequest<T>(url: string, body?: unknown): Promise<T> {
         throw new Error(
           "This retry conflicts with an earlier message. Refresh to check the conversation.",
         );
+      if (response.status === 413)
+        throw new Error("Files must be 50 MB or smaller.");
+      if (response.status === 415)
+        throw new Error("This file type is not allowed.");
       throw new Error("Unable to complete the request. Please retry.");
     }
     return await response.json();
@@ -113,4 +157,30 @@ export const sendMessage = (id: string, clientId: string, text: string) =>
   chatRequest<ChatMessage>(`${base}/conversations/${id}/messages`, {
     clientId,
     text,
+  });
+
+// Upload one file with an optional caption, reusing the client ID on retry.
+export const sendFile = (
+  id: string,
+  clientId: string,
+  file: File,
+  text: string,
+) => {
+  const form = new FormData();
+  form.set("clientId", clientId);
+  form.set("text", text);
+  form.set("file", file);
+  return chatRequest<ChatMessage>(
+    `${base}/conversations/${id}/files`,
+    form,
+    120000,
+  );
+};
+// Build the member-only download address of a shared file.
+export const fileUrl = (fileId: string) =>
+  `${base}/files/${encodeURIComponent(fileId)}`;
+
+export const sendTyping = (id: string, active: boolean) =>
+  chatRequest<{ accepted: boolean }>(`${base}/conversations/${id}/typing`, {
+    active,
   });

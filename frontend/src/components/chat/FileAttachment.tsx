@@ -1,30 +1,39 @@
-import { useEffect, useRef } from "react";
+import { fileUrl } from "../../services/chatService";
+import { fileSize } from "./chatState";
+import type { ChatAttachment } from "../../types/chat";
 
-// Create a temporary download link and display attachment details.
-export default function FileAttachment({ file }: { file: File }) {
-  const link = useRef<HTMLAnchorElement>(null);
-  useEffect(() => {
-    const url = URL.createObjectURL(
-      new Blob([file], { type: "application/octet-stream" }),
+// Show a shared file as a download link, with a preview for images.
+export default function FileAttachment({
+  attachment: a,
+}: {
+  attachment: ChatAttachment;
+}) {
+  if (!a.available)
+    return (
+      <span className="file-attachment expired">
+        <span aria-hidden="true">⌀</span>
+        <span>
+          <strong>{a.name}</strong>
+          <small>File expired</small>
+        </span>
+      </span>
     );
-    if (link.current) link.current.href = url;
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-  const size =
-    file.size < 1024 * 1024
-      ? `${Math.ceil(file.size / 1024)} KB`
-      : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+  const url = fileUrl(a.id);
   return (
     <a
-      ref={link}
       className="file-attachment"
-      download={file.name}
-      aria-label={`Download ${file.name}`}
+      href={url}
+      download={a.name}
+      aria-label={`Download ${a.name}`}
     >
-      <span aria-hidden="true">↓</span>
+      {a.contentType.startsWith("image/") ? (
+        <img className="file-preview" src={url} alt="" loading="lazy" />
+      ) : (
+        <span aria-hidden="true">↓</span>
+      )}
       <span>
-        <strong>{file.name}</strong>
-        <small>{size} · Download</small>
+        <strong>{a.name}</strong>
+        <small>{fileSize(a.size)} · Download</small>
       </span>
     </a>
   );

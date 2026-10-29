@@ -65,7 +65,7 @@ class ProductionInfrastructureIT {
     void containersStartMigrationsValidateAndReadinessIsUp() {
         assertThat(POSTGRES.isRunning()).isTrue();
         assertThat(REDIS.isRunning()).isTrue();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
         assertThat(db.queryForObject("SELECT 1", Integer.class)).isEqualTo(1);
         assertThat(limiter.allow("startup-probe")).isTrue();
     }
