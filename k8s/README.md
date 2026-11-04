@@ -175,7 +175,7 @@ ConfigMap changes in this Kustomize setup generate a new name and trigger the
 dependent Deployment rollout. Secret changes require a backend rollout restart.
 
 Before an external deployment, add HTTPS ingress/gateway routing, change
-FRONTEND_ORIGIN to the public HTTPS origin, restore Secure cookies, use
+FRONTEND_ORIGIN to the public HTTPS origin, set PUBLIC_SCHEME=https, restore Secure cookies, use
 authenticated Redis, and configure trusted proxy addresses for client IP handling.
 This local Redis instance persists data but is not a high-availability service.
 

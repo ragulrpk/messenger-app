@@ -4,8 +4,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-messenger}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in your production environment}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your production environment}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -23,7 +23,7 @@ services:
         "--appendonly",
         "yes",
         "--requirepass",
-        "${REDIS_PASSWORD}",
+        "${REDIS_PASSWORD:?Set REDIS_PASSWORD in your production environment}",
       ]
     volumes:
       - redis-data:/data
@@ -37,7 +37,7 @@ services:
       timeout: 5s
       retries: 10
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in your production environment}
 
   backend:
     build: ./backend/demo
@@ -49,21 +49,36 @@ services:
         condition: service_healthy
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-messenger}
-      DB_USERNAME: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in your production environment}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your production environment}
       MIGRATION_DB_URL: ${MIGRATION_DB_URL:-jdbc:postgresql://postgres:5432/${POSTGRES_DB:-messenger}}
-      MIGRATION_DB_USERNAME: ${MIGRATION_DB_USERNAME:-${POSTGRES_USER}}
-      MIGRATION_DB_PASSWORD: ${MIGRATION_DB_PASSWORD:-${POSTGRES_PASSWORD}}
-      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
-      MAIL_PRODUCT_NAME: "Let's Talk"
+      MIGRATION_DB_USERNAME: ${MIGRATION_DB_USERNAME:-${POSTGRES_USER:?Set POSTGRES_USER in your production environment}}
+      MIGRATION_DB_PASSWORD: ${MIGRATION_DB_PASSWORD:-${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your production environment}}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in your production environment}@redis:6379
+      MAIL_PRODUCT_NAME: ${MAIL_PRODUCT_NAME:-Let's Talk}
       BOOTSTRAP_USERNAME: ${BOOTSTRAP_USERNAME:-}
       BOOTSTRAP_PASSWORD: ${BOOTSTRAP_PASSWORD:-}
       BOOTSTRAP_EMAIL: ${BOOTSTRAP_EMAIL:-}
-      FRONTEND_ORIGIN: ${PUBLIC_ORIGIN}
+      SESSION_IDLE_TIMEOUT: ${SESSION_IDLE_TIMEOUT:-5m}
+      MAIL_HOST: ${MAIL_HOST:-localhost}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@lets-talk.local}
+      FILE_STORAGE_PATH: /var/lib/messenger/files
+      FILE_MAX_SIZE: ${FILE_MAX_SIZE:-5MB}
+      FILE_VIDEO_MAX_SIZE: ${FILE_VIDEO_MAX_SIZE:-200MB}
+      FILE_MAX_REQUEST_SIZE: ${FILE_MAX_REQUEST_SIZE:-201MB}
+      FILE_DAILY_QUOTA: ${FILE_DAILY_QUOTA:-1GB}
+      FILE_RETENTION: ${FILE_RETENTION:-60d}
+      SERVER_SERVLET_SESSION_COOKIE_SECURE: "true"
+      FRONTEND_ORIGIN: ${PUBLIC_ORIGIN:?Set PUBLIC_ORIGIN in your production environment}
       PUSH_PUBLIC_KEY: ${PUSH_PUBLIC_KEY:-}
       PUSH_PRIVATE_KEY: ${PUSH_PRIVATE_KEY:-}
       PUSH_SUBJECT: ${PUSH_SUBJECT:-}
-      TRUSTED_PROXY_PATTERN: 172[.]\d+[.]\d+[.]\d+
+      TRUSTED_PROXY_PATTERN: ${TRUSTED_PROXY_PATTERN:-172[.](1[6-9]|2[0-9]|3[01])[.]\d+[.]\d+}
       LOG_FORMAT: logstash
       LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-20}
       LOGIN_RATE_WINDOW: ${LOGIN_RATE_WINDOW:-60s}
@@ -98,13 +113,16 @@ services:
       start_period: 30s
 
   frontend:
+    environment:
+      PUBLIC_SCHEME: ${PUBLIC_SCHEME:-https}
+      UPLOAD_MAX_BODY_SIZE: ${UPLOAD_MAX_BODY_SIZE:-201m}
     build: ./frontend
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
     ports:
-      - "${PUBLIC_PORT:-8080}:8080"
+      - "${PUBLIC_BIND_ADDRESS:-127.0.0.1}:${PUBLIC_PORT:-8080}:8080"
     healthcheck:
       test:
         ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/healthz | grep ok"]

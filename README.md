@@ -1,4 +1,4 @@
-# Messenger
+# Let's Talk
 
 The React frontend, Spring Boot backend, CI workflow, container configuration and documentation are managed by one Git repository rooted at `messenger-app`.
 
@@ -26,6 +26,8 @@ Backend commands run from `backend/demo`: `./mvnw verify` and `./mvnw -Pintegrat
 See the frontend and backend README files for application-specific instructions.
 
 ## Configuration and repository hygiene
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for environment selection, Nginx, HTTPS and upload settings.
 
 Copy the appropriate `.env.*.example` template to a local environment file and configure it for your environment. Actual `.env` files, dependencies, build output and machine-specific IDE settings are ignored. Environment example files, Maven wrapper configuration and the frontend lockfile are included.
 

@@ -61,6 +61,7 @@ jobs:
       POSTGRES_PASSWORD: ci-only-password
       REDIS_PASSWORD: ci-only-password
       PUBLIC_ORIGIN: http://localhost:8080
+      PUBLIC_SCHEME: http
       PUBLIC_PORT: "8080"
       BOOTSTRAP_USERNAME: ci-admin
       BOOTSTRAP_PASSWORD: ci-only-admin-password
@@ -68,9 +69,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose -f compose.production.yml config
-      - run: docker compose -p lets-talk-ci -f compose.production.yml build
+      - run: docker compose -p lets-talk-ci -f compose.production.yml build --pull
       - name: Start production stack
         run: docker compose -f compose.production.yml up --detach --wait --wait-timeout 240
+      - name: Validate Nginx configuration
+        run: docker compose -f compose.production.yml exec -T frontend nginx -t
       - name: Check Let’s Talk through Nginx
         shell: bash
         run: |
@@ -141,6 +144,7 @@ jobs:
         with:
           context: ${{ matrix.app == 'backend' && './backend/demo' || './frontend' }}
           push: true
+          pull: true
           tags: ${{ steps.image.outputs.name }}:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}

@@ -15,13 +15,30 @@ x-backend: &backend
     SERVER_PORT: "8080"
     SERVER_ADDRESS: 0.0.0.0
     # Allow both the Docker frontend and the host's Vite development server.
-    MAIL_PRODUCT_NAME: "Let's Talk"
+    MAIL_PRODUCT_NAME: ${MAIL_PRODUCT_NAME:-Let's Talk}
     BOOTSTRAP_EMAIL: ${BOOTSTRAP_EMAIL:-}
+    SESSION_IDLE_TIMEOUT: ${SESSION_IDLE_TIMEOUT:-5m}
+    MAX_SESSIONS_PER_USER: ${MAX_SESSIONS_PER_USER:-1}
+    MAIL_HOST: ${MAIL_HOST:-localhost}
+    MAIL_PORT: ${MAIL_PORT:-1025}
+    MAIL_USERNAME: ${MAIL_USERNAME:-}
+    MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+    MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
+    MAIL_FROM: ${MAIL_FROM:-no-reply@lets-talk.local}
+    FILE_STORAGE_PATH: /var/lib/messenger/files
+    FILE_MAX_SIZE: ${FILE_MAX_SIZE:-5MB}
+    FILE_VIDEO_MAX_SIZE: ${FILE_VIDEO_MAX_SIZE:-200MB}
+    FILE_MAX_REQUEST_SIZE: ${FILE_MAX_REQUEST_SIZE:-201MB}
+    FILE_DAILY_QUOTA: ${FILE_DAILY_QUOTA:-1GB}
+    FILE_RETENTION: ${FILE_RETENTION:-60d}
+    TRUSTED_PROXY_PATTERN: ${TRUSTED_PROXY_PATTERN:-172[.](1[6-9]|2[0-9]|3[01])[.]\d+[.]\d+}
+    SERVER_SERVLET_SESSION_COOKIE_SECURE: "false"
     FRONTEND_ORIGIN: http://localhost,http://127.0.0.1,http://localhost:5173,http://127.0.0.1:5173
     PUSH_PUBLIC_KEY: ${PUSH_PUBLIC_KEY:-}
     PUSH_PRIVATE_KEY: ${PUSH_PRIVATE_KEY:-}
     PUSH_SUBJECT: ${PUSH_SUBJECT:-}
-    # Passed through as requested; account initialization is local-profile-only.
+    # First administrator on a fresh database; existing credentials are preserved.
     BOOTSTRAP_USERNAME: ${BOOTSTRAP_USERNAME:-}
     BOOTSTRAP_PASSWORD: ${BOOTSTRAP_PASSWORD:-}
     REDIS_URL: redis://messenger-redis:6379
@@ -87,12 +104,12 @@ services:
   messenger-backend-1:
     <<: *backend
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
   messenger-backend-2:
     <<: *backend
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"
 
   messenger-redis:
     image: redis:8-alpine

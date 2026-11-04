@@ -12,6 +12,11 @@ configMapGenerator:
       - default.conf=nginx.conf
   - name: messenger-config
     literals:
+      - BACKEND_SERVERS=server messenger-backend:8080;
+      - PUBLIC_SCHEME=http
+      - UPLOAD_MAX_BODY_SIZE=201m
+      - SESSION_IDLE_TIMEOUT=5m
+      - MAX_SESSIONS_PER_USER=1
       - MAIL_PRODUCT_NAME=Let's Talk
       - FRONTEND_ORIGIN=http://localhost:8088
       # HTTP is only for local port-forward testing. Use true with HTTPS.

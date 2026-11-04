@@ -13,8 +13,24 @@ services:
       DB_URL: jdbc:postgresql://host.docker.internal:5432/${POSTGRES_DB:-messenger}
       DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in .env.windows}
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.windows}
-      MAIL_PRODUCT_NAME: "Let's Talk"
+      MAIL_PRODUCT_NAME: ${MAIL_PRODUCT_NAME:-Let's Talk}
       BOOTSTRAP_EMAIL: ${BOOTSTRAP_EMAIL:-}
+      SESSION_IDLE_TIMEOUT: ${SESSION_IDLE_TIMEOUT:-5m}
+      MAX_SESSIONS_PER_USER: ${MAX_SESSIONS_PER_USER:-1}
+      MAIL_HOST: ${MAIL_HOST:-localhost}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@lets-talk.local}
+      FILE_STORAGE_PATH: /var/lib/messenger/files
+      FILE_MAX_SIZE: ${FILE_MAX_SIZE:-5MB}
+      FILE_VIDEO_MAX_SIZE: ${FILE_VIDEO_MAX_SIZE:-200MB}
+      FILE_MAX_REQUEST_SIZE: ${FILE_MAX_REQUEST_SIZE:-201MB}
+      FILE_DAILY_QUOTA: ${FILE_DAILY_QUOTA:-1GB}
+      FILE_RETENTION: ${FILE_RETENTION:-60d}
+      TRUSTED_PROXY_PATTERN: ${TRUSTED_PROXY_PATTERN:-172[.](1[6-9]|2[0-9]|3[01])[.]\d+[.]\d+}
       FRONTEND_ORIGIN: http://localhost:${PUBLIC_PORT:-8080},http://127.0.0.1:${PUBLIC_PORT:-8080}
       PUSH_PUBLIC_KEY: ${PUSH_PUBLIC_KEY:-}
       PUSH_PRIVATE_KEY: ${PUSH_PRIVATE_KEY:-}
@@ -42,6 +58,9 @@ services:
       start_period: 30s
 
   frontend:
+    environment:
+      PUBLIC_SCHEME: http
+      UPLOAD_MAX_BODY_SIZE: ${UPLOAD_MAX_BODY_SIZE:-201m}
     build:
       context: ./frontend
       dockerfile: Dockerfile

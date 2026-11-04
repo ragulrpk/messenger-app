@@ -100,6 +100,9 @@ spec:
       containers:
         - name: frontend
           image: messenger-frontend:k8s-v1
+          envFrom:
+            - configMapRef:
+                name: messenger-config
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
