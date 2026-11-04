@@ -945,7 +945,10 @@ test("persistent chat: directory, failed send, safe retry, catch-up, pagination 
     // Files picked together are sent as one message carrying all of them.
     await act(async () => {
       Object.defineProperty(picker, "files", {
-        value: [new File(["%PDF-1.7"], "a.pdf"), new File(["%PDF-1.7"], "b.pdf")],
+        value: [
+          new File(["%PDF-1.7"], "a.pdf"),
+          new File(["%PDF-1.7"], "b.pdf"),
+        ],
         configurable: true,
       });
       picker.dispatchEvent(new dom.window.Event("change", { bubbles: true }));

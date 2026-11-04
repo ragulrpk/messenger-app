@@ -34,6 +34,9 @@ import java.util.concurrent.TimeUnit;
 @ActiveProfiles(value = "websocket-production-it", inheritProfiles = false)
 @TestPropertySource(properties = "logging.structured.format.console=logstash")
 class ChatWebSocketProductionIT extends ChatWebSocketTests {
+    // Both test backends share disposable storage, never the production volume path.
+    private static final java.nio.file.Path FILE_STORAGE = java.nio.file.Path.of(
+            "target", "websocket-production-it-files-" + UUID.randomUUID()).toAbsolutePath();
     @Autowired RedisIndexedSessionRepository sessionRepository;
     @Autowired StringRedisTemplate redis;
 
@@ -132,6 +135,7 @@ class ChatWebSocketProductionIT extends ChatWebSocketTests {
                 "--MIGRATION_DB_PASSWORD=" + POSTGRES.getPassword(),
                 "--REDIS_URL=redis://" + REDIS.getHost() + ":" + REDIS.getMappedPort(6379),
                 "--FRONTEND_ORIGIN=http://localhost:5173", "--server.servlet.session.cookie.secure=false",
+                "--app.files.root=" + FILE_STORAGE,
                 "--app.security.login-rate-limit.attempts=100", "--logging.structured.format.console=logstash");
     }
 
@@ -195,6 +199,7 @@ class ChatWebSocketProductionIT extends ChatWebSocketTests {
 
     @DynamicPropertySource
     static void productionInfrastructure(DynamicPropertyRegistry properties) {
+        properties.add("app.files.root", FILE_STORAGE::toString);
         properties.add("DB_URL", POSTGRES::getJdbcUrl);
         properties.add("DB_USERNAME", POSTGRES::getUsername);
         properties.add("DB_PASSWORD", POSTGRES::getPassword);
