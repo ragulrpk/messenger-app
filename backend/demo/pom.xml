@@ -28,6 +28,8 @@
     </scm>
     <properties>
         <java.version>25</java.version>
+        <!-- Keep Jackson 3 modules aligned on the security-patched 3.1 release. -->
+        <jackson-bom.version>3.1.7</jackson-bom.version>
         <!-- Security fixes beyond the Tomcat version managed by Boot 4.1.1. -->
         <tomcat.version>11.0.26</tomcat.version>
         <testcontainers.version>1.21.4</testcontainers.version>
