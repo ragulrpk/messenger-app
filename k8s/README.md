@@ -1,4 +1,4 @@
-# Docker Desktop Kubernetes: Messenger
+# Docker Desktop Kubernetes: Let's Talk
 
 This local deployment runs one frontend pod, two backend pods and one persistent
 Redis pod. PostgreSQL stays on Windows and keeps your existing accounts and
@@ -187,8 +187,18 @@ This local Redis instance persists data but is not a high-availability service.
 - [Kubernetes probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
 - [NGINX WebSocket proxying](https://nginx.org/en/docs/http/websocket.html)
 
-YAML syntax and the Nginx Service upstream, WebSocket directives and SPA fallback
-were checked locally. The manifests still require validation against your cluster.
-Docker was unavailable on PATH and the installed kubectl executable could not
-run because execution was denied in the authoring environment. Image builds,
-Kustomize rendering and cluster rollouts have not been verified here.
+Compose configuration, Kustomize rendering and deployment-script syntax were
+checked locally. Image builds and cluster rollouts still require runtime validation.
+
+## Let's Talk deployment
+
+CI publishes `ghcr.io/<owner>/lets-talk-backend:<commit>` and
+`ghcr.io/<owner>/lets-talk-frontend:<commit>`. `deploy.ps1` selects these images.
+Existing `messenger` resource names, namespace, database and volume paths are
+retained to preserve existing installations and stored data.
+
+Set `BOOTSTRAP_USERNAME`, `BOOTSTRAP_PASSWORD` and `BOOTSTRAP_EMAIL` in
+`messenger-secrets` to provision the first administrator on a fresh database.
+Remove the bootstrap password after provisioning. The ConfigMap supplies the
+Let's Talk email product name. HTTPS and production infrastructure requirements
+above still apply.

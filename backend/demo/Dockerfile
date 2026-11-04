@@ -5,6 +5,7 @@ COPY src ./src
 RUN --mount=type=cache,target=/root/.m2 mvn -B verify
 
 FROM eclipse-temurin:25-jre
+LABEL org.opencontainers.image.title="Let's Talk backend"
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \

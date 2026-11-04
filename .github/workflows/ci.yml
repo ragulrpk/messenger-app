@@ -1,4 +1,4 @@
-name: CI
+name: Let's Talk CI
 
 on:
   push:
@@ -55,20 +55,38 @@ jobs:
   containers:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
+    env:
+      COMPOSE_PROJECT_NAME: lets-talk-ci
+      POSTGRES_USER: ci
+      POSTGRES_PASSWORD: ci-only-password
+      REDIS_PASSWORD: ci-only-password
+      PUBLIC_ORIGIN: http://localhost:8080
+      PUBLIC_PORT: "8080"
+      BOOTSTRAP_USERNAME: ci-admin
+      BOOTSTRAP_PASSWORD: ci-only-admin-password
+      BOOTSTRAP_EMAIL: ci-admin@example.test
     steps:
       - uses: actions/checkout@v4
       - run: docker compose -f compose.production.yml config
-        env:
-          POSTGRES_USER: ci
-          POSTGRES_PASSWORD: ci-only-password
-          REDIS_PASSWORD: ci-only-password
-          PUBLIC_ORIGIN: https://messenger.example.test
-      - run: docker compose -p messenger-ci -f compose.production.yml build
-        env:
-          POSTGRES_USER: ci
-          POSTGRES_PASSWORD: ci-only-password
-          REDIS_PASSWORD: ci-only-password
-          PUBLIC_ORIGIN: https://messenger.example.test
+      - run: docker compose -p lets-talk-ci -f compose.production.yml build
+      - name: Start production stack
+        run: docker compose -f compose.production.yml up --detach --wait --wait-timeout 240
+      - name: Check Let’s Talk through Nginx
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent http://localhost:8080/healthz | grep -q ok
+          curl --fail --silent http://localhost:8080/ | grep -q "Let's Talk"
+          curl --fail --silent http://localhost:8080/lets-talk.svg | grep -q '<svg'
+          curl --fail --silent http://localhost:8080/actuator/health/readiness | python3 -c 'import json,sys; assert json.load(sys.stdin)["status"] == "UP"'
+          curl --fail --silent http://localhost:8080/api/v1/users/csrf | python3 -c 'import json,sys; assert json.load(sys.stdin)["token"]'
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:8080/api/v1/users/me)" = 401
+      - name: Production stack logs
+        if: failure()
+        run: docker compose -f compose.production.yml logs --no-color --tail 200
+      - name: Stop CI stack
+        if: always()
+        run: docker compose -f compose.production.yml down --volumes --remove-orphans
       - uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           scan-type: fs
@@ -80,7 +98,7 @@ jobs:
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           scan-type: image
-          image-ref: messenger-ci-frontend:latest
+          image-ref: lets-talk-ci-frontend:latest
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
@@ -88,7 +106,7 @@ jobs:
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           scan-type: image
-          image-ref: messenger-ci-backend:latest
+          image-ref: lets-talk-ci-backend:latest
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
@@ -106,12 +124,12 @@ jobs:
         app: [frontend, backend]
     steps:
       - uses: actions/checkout@v4
-      - name: Choose image name
+      - name: Choose Let's Talk image name
         id: image
         env:
           OWNER: ${{ github.repository_owner }}
           APP: ${{ matrix.app }}
-        run: echo "name=ghcr.io/${OWNER,,}/messenger-${APP}" >> "$GITHUB_OUTPUT"
+        run: echo "name=ghcr.io/${OWNER,,}/lets-talk-${APP}" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:

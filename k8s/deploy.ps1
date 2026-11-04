@@ -16,8 +16,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Create messenger-secrets and ghcr-pull in the 
 $taskManifest = & kubectl kustomize $PSScriptRoot
 if ($LASTEXITCODE -ne 0) { throw 'Kustomize rendering failed.' }
 $taskManifestText = $taskManifest -join "`n"
-$taskBackendImage = "$RegistryNamespace/messenger-backend:$ImageTag"
-$taskFrontendImage = "$RegistryNamespace/messenger-frontend:$ImageTag"
+$taskBackendImage = "$RegistryNamespace/lets-talk-backend:$ImageTag"
+$taskFrontendImage = "$RegistryNamespace/lets-talk-frontend:$ImageTag"
 if (!$taskManifestText.Contains('image: messenger-backend:k8s-v1') -or
     !$taskManifestText.Contains('image: messenger-frontend:k8s-v1')) {
     throw 'Expected base image names were not found; update deploy.ps1 to match deployment.yaml.'

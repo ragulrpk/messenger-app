@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres-dev-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 5s
       timeout: 5s
       retries: 12
@@ -27,6 +27,10 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/messenger
       DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in the root .env file}
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
+      MAIL_PRODUCT_NAME: "Let's Talk"
+      BOOTSTRAP_USERNAME: ${BOOTSTRAP_USERNAME:-}
+      BOOTSTRAP_PASSWORD: ${BOOTSTRAP_PASSWORD:-}
+      BOOTSTRAP_EMAIL: ${BOOTSTRAP_EMAIL:-}
       FRONTEND_ORIGIN: http://localhost:5173,http://127.0.0.1:5173
       PUSH_PUBLIC_KEY: ${PUSH_PUBLIC_KEY:-}
       PUSH_PRIVATE_KEY: ${PUSH_PRIVATE_KEY:-}

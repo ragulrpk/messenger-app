@@ -15,6 +15,8 @@ x-backend: &backend
     SERVER_PORT: "8080"
     SERVER_ADDRESS: 0.0.0.0
     # Allow both the Docker frontend and the host's Vite development server.
+    MAIL_PRODUCT_NAME: "Let's Talk"
+    BOOTSTRAP_EMAIL: ${BOOTSTRAP_EMAIL:-}
     FRONTEND_ORIGIN: http://localhost,http://127.0.0.1,http://localhost:5173,http://127.0.0.1:5173
     PUSH_PUBLIC_KEY: ${PUSH_PUBLIC_KEY:-}
     PUSH_PRIVATE_KEY: ${PUSH_PRIVATE_KEY:-}
@@ -31,7 +33,17 @@ x-backend: &backend
       condition: service_healthy
   healthcheck:
     # curl is installed explicitly by the existing backend Dockerfile.
-    test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--max-time", "4", "http://localhost:8080/actuator/health"]
+    test:
+      [
+        "CMD",
+        "curl",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--max-time",
+        "4",
+        "http://localhost:8080/actuator/health",
+      ]
     interval: 10s
     timeout: 5s
     retries: 12
@@ -41,6 +53,8 @@ x-backend: &backend
 
 services:
   messenger-frontend:
+    environment:
+      BACKEND_SERVERS: "server messenger-backend-1:8080; server messenger-backend-2:8080;"
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -54,7 +68,15 @@ services:
         condition: service_healthy
     healthcheck:
       # BusyBox wget is provided by the existing Alpine runtime image.
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "/dev/null",
+          "http://127.0.0.1:8080/healthz",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
