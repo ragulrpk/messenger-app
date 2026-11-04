@@ -5,7 +5,12 @@ import {
   getCurrentUser,
   logout,
   changePassword,
-  adminResetPassword,
+  request,
+  adminLogin,
+  completeSignIn,
+  startPasswordReset,
+  completePasswordReset,
+  reportActivity,
 } from "./authService.js";
 
 const credentials = { username: "taylor", password: " secret " };
@@ -16,26 +21,55 @@ const csrf = () =>
     JSON.stringify({ headerName: "X-CSRF-TOKEN", token: "test-csrf" }),
   );
 
-test("administrator reset uses CSRF and cookies and preserves credentials", async () => {
-  const values = {
-    username: "member",
-    currentPassword: " admin password ",
-    newPassword: " replacement123 ",
-    confirmPassword: " replacement123 ",
-  };
-  const restore = mockApi(async (url, options) => {
-    assert.equal(
-      url,
-      "http://localhost:8080/api/v1/users/admin-password-reset",
+test("profile reports a temporary password and when an administrator reset it", async () => {
+  const cases = [
+    [
+      { mustChangePassword: true, passwordResetAt: "2026-11-02T10:00:00Z" },
+      true,
+      "2026-11-02T10:00:00Z",
+    ],
+    [
+      { mustChangePassword: "true", passwordResetAt: "not a date" },
+      undefined,
+      undefined,
+    ],
+    [{}, undefined, undefined],
+  ];
+  for (const [fields, must, resetAt] of cases) {
+    const restore = mockApi(
+      async () =>
+        new Response(JSON.stringify({ user: { ...user, ...fields } })),
     );
-    assert.equal(options.method, "POST");
-    assert.equal(options.credentials, "include");
-    assert.equal(options.headers["X-CSRF-TOKEN"], "test-csrf");
-    assert.deepEqual(JSON.parse(options.body), values);
-    return new Response(null, { status: 204 });
-  });
+    try {
+      const profile = await getCurrentUser(endpoint);
+      assert.equal(profile.mustChangePassword, must);
+      assert.equal(profile.passwordResetAt, resetAt);
+    } finally {
+      restore();
+    }
+  }
+});
+
+test("refusals keep the server's code and message for the screen to act on", async () => {
+  const restore = mockApi(
+    async () =>
+      new Response(
+        JSON.stringify({
+          code: "SECOND_FACTOR_REQUIRED",
+          message: "Enter a code from your authenticator app.",
+        }),
+        { status: 403 },
+      ),
+  );
   try {
-    await adminResetPassword(values, endpoint);
+    await assert.rejects(
+      request("http://localhost:8080/api/v1/admin/accounts"),
+      {
+        status: 403,
+        code: "SECOND_FACTOR_REQUIRED",
+        message: "Enter a code from your authenticator app.",
+      },
+    );
   } finally {
     restore();
   }
@@ -101,7 +135,7 @@ test("login gets CSRF and sends credentials, cookie, and token to Spring Boot", 
     return new Response(JSON.stringify({ user }));
   });
   try {
-    assert.deepEqual(await login(credentials, endpoint), user);
+    assert.deepEqual(await login(credentials, endpoint), { user });
   } finally {
     restore();
   }
@@ -248,7 +282,7 @@ test("login and session restoration preserve the supported profile fields only",
       ),
   );
   try {
-    assert.deepEqual(await login(credentials), profile);
+    assert.deepEqual(await login(credentials), { user: profile });
     assert.deepEqual(await getCurrentUser(), profile);
   } finally {
     restore();
@@ -295,5 +329,54 @@ test("invalid CSRF response prevents credential submission", async () => {
     assert.equal(calls, 1);
   } finally {
     globalThis.fetch = original;
+  }
+});
+
+test("a temporary password continues with a new password on the right endpoints, always with CSRF", async () => {
+  const calls = [];
+  const restore = mockApi(async (url, options) => {
+    calls.push([
+      url.replace("http://localhost:8080/api/v1/users", ""),
+      JSON.parse(options.body),
+    ]);
+    assert.equal(options.headers["X-CSRF-TOKEN"], "test-csrf");
+    if (url.endsWith("/login/verify"))
+      return new Response(JSON.stringify({ user }));
+    if (url.endsWith("/password-reset/complete") || url.endsWith("/activity"))
+      return new Response(null, { status: 204 });
+    return new Response(
+      JSON.stringify({
+        status: "PASSWORD_CHANGE_REQUIRED",
+        passwordChangeRequired: true,
+      }),
+    );
+  });
+  try {
+    const challenge = { passwordChangeRequired: true };
+    assert.deepEqual(await login(credentials, endpoint), { challenge });
+    assert.deepEqual(await adminLogin(credentials, endpoint), { challenge });
+    const values = {
+      newPassword: "a new password",
+      confirmPassword: "a new password",
+    };
+    assert.deepEqual(await completeSignIn(values, endpoint), user);
+    await startPasswordReset("GPF001", endpoint);
+    await completePasswordReset(values, endpoint);
+    await reportActivity(endpoint);
+    assert.deepEqual(
+      calls.map(([path]) => path),
+      [
+        "/login",
+        "/admin-login",
+        "/login/verify",
+        "/password-reset/start",
+        "/password-reset/complete",
+        "/activity",
+      ],
+    );
+    assert.deepEqual(calls[3][1], { username: "GPF001" });
+    assert.deepEqual(calls[2][1], values);
+  } finally {
+    restore();
   }
 });

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import CurrentUserHeader from "./CurrentUserHeader";
 import ConversationSearch from "./ConversationSearch";
 import ConversationSection from "./ConversationSection";
@@ -24,6 +25,9 @@ export default function ChatSidebar(props: {
   onMore?: () => void;
   opening?: boolean;
   openError?: string;
+  actionError?: string;
+  onNewGroup?: () => void;
+  groupPanel?: ReactNode;
 }) {
   const { pinned, recent } = sections(props.conversations);
   const shared = {
@@ -39,6 +43,12 @@ export default function ChatSidebar(props: {
         onQuery={props.onQuery}
         onSelect={props.onResult}
       />
+      {props.onNewGroup && !props.groupPanel && (
+        <button className="new-group-button" onClick={props.onNewGroup}>
+          ＋ New group
+        </button>
+      )}
+      {props.groupPanel}
       {props.loading && (
         <p className="messaging-notice" role="status">
           Loading conversations…
@@ -58,6 +68,11 @@ export default function ChatSidebar(props: {
       {props.openError && (
         <p className="messaging-notice" role="alert">
           {props.openError} Select the person to retry.
+        </p>
+      )}
+      {props.actionError && (
+        <p className="messaging-notice" role="alert">
+          {props.actionError} Your change was not saved.
         </p>
       )}
       <ConversationSection title="PINNED" conversations={pinned} {...shared} />

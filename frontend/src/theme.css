@@ -24,23 +24,48 @@
   outline-offset: 2px;
 }
 
-:root[data-theme="dark"] {
+/* Shared dark surfaces; colored themes override the palette below. */
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"]) {
   color-scheme: dark;
-  --ink: #e5ebee;
-  --muted: #a7b4be;
-  --teal: #e2a47b;
-  --line: #3a444e;
+  --ink: var(--theme-e5ebee, #e5ebee);
+  --muted: var(--theme-a7b4be, #a7b4be);
+  --teal: var(--theme-e2a47b, #e2a47b);
+  --line: var(--theme-3a444e, #3a444e);
   color: var(--ink);
-  background: #171b20;
+  background: var(--theme-171b20, #171b20);
 }
-:root[data-theme="dark"] .messenger-chat {
-  --ink: #e5ebee;
-  --muted: #a7b4be;
-  --teal: #e2a47b;
-  --line: #3a444e;
-  background: #171b20;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  :is(.group-info, .group-info input:not([type="checkbox"])) {
+  background: var(--theme-171b20, #171b20);
 }
-:root[data-theme="dark"]
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  :is(
+    .group-info-bar,
+    .group-card,
+    .group-info-hero,
+    .group-info button:not(.icon-button)
+  ) {
+  background: var(--theme-20262c, #20262c);
+  color: var(--ink);
+}
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  :is(
+    .group-role-badge,
+    .group-info .group-role-member,
+    .group-section-heading h3 span
+  ) {
+  background: var(--theme-34433f, #34433f);
+  color: var(--theme-d0e7db, #d0e7db);
+}
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .messenger-chat {
+  --ink: var(--theme-e5ebee, #e5ebee);
+  --muted: var(--theme-a7b4be, #a7b4be);
+  --teal: var(--theme-e2a47b, #e2a47b);
+  --line: var(--theme-3a444e, #3a444e);
+  background: var(--theme-171b20, #171b20);
+}
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
   :is(
     .messenger-topbar,
     .conversation-header,
@@ -49,18 +74,20 @@
     .settings-panel,
     .action-popover
   ) {
-  background: #20262c;
+  background: var(--theme-20262c, #20262c);
   border-color: var(--line);
   color: var(--ink);
 }
-:root[data-theme="dark"] .chat-messages {
-  background: #171b20;
-  scrollbar-color: #55616c transparent;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .chat-messages {
+  background: var(--theme-171b20, #171b20);
+  scrollbar-color: var(--theme-55616c, #55616c) transparent;
 }
-:root[data-theme="dark"] .conversation-sidebar {
-  scrollbar-color: #55616c transparent;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .conversation-sidebar {
+  scrollbar-color: var(--theme-55616c, #55616c) transparent;
 }
-:root[data-theme="dark"]
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
   :is(
     .search-field,
     .message-composer,
@@ -70,22 +97,27 @@
     .theme-setting select,
     .pending-attachments li
   ) {
-  background: #293139;
+  background: var(--theme-293139, #293139);
   border-color: var(--line);
   color: var(--ink);
 }
-:root[data-theme="dark"] :is(input, textarea)::placeholder {
-  color: #a7b4be;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  :is(input, textarea)::placeholder {
+  color: var(--theme-a7b4be, #a7b4be);
   opacity: 1;
 }
-:root[data-theme="dark"] :is(.conversation-section h2, .list-empty) {
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  :is(.conversation-section h2, .list-empty) {
   color: var(--muted);
 }
-:root[data-theme="dark"] .conversation-section h2 > span {
-  background: #303a43;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .conversation-section
+  h2
+  > span {
+  background: var(--theme-303a43, #303a43);
   color: var(--ink);
 }
-:root[data-theme="dark"]
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
   :is(
     .conversation-row:hover,
     .search-result:hover,
@@ -96,175 +128,358 @@
     .settings-account-actions > a:hover,
     .settings-account-actions > button:hover:not(:disabled)
   ) {
-  background: #303a43;
+  background: var(--theme-303a43, #303a43);
 }
-:root[data-theme="dark"] .conversation-row.selected {
-  background: #49382e;
-  color: #ffe0c9;
-  box-shadow: inset 3px 0 #e2a47b;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .conversation-row.selected {
+  background: var(--theme-49382e, #49382e);
+  color: var(--theme-ffe0c9, #ffe0c9);
+  box-shadow: inset 3px 0 var(--theme-e2a47b, #e2a47b);
 }
-:root[data-theme="dark"] .chat-avatar {
-  background: #35473e;
-  color: #d9f0e1;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .chat-avatar {
+  background: var(--theme-35473e, #35473e);
+  color: var(--theme-d9f0e1, #d9f0e1);
 }
-:root[data-theme="dark"] .group-avatar {
-  background: #51422f;
-  color: #f4d7a6;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .group-avatar {
+  background: var(--theme-51422f, #51422f);
+  color: var(--theme-f4d7a6, #f4d7a6);
 }
-:root[data-theme="dark"] .presence {
-  border-color: #20262c;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .presence {
+  border-color: var(--theme-20262c, #20262c);
 }
-:root[data-theme="dark"] :is(.unread, .selected .unread) {
-  background: #e2a47b;
-  color: #241b16;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  :is(.unread, .selected .unread) {
+  background: var(--theme-e2a47b, #e2a47b);
+  color: var(--theme-241b16, #241b16);
 }
-:root[data-theme="dark"] .chat-message {
-  background: #293139;
-  border-color: #3a444e;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .chat-message {
+  background: var(--theme-293139, #293139);
+  border-color: var(--theme-3a444e, #3a444e);
   box-shadow: none;
 }
-:root[data-theme="dark"] .chat-message.sent {
-  background: #49382e;
-  border-color: #705340;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .chat-message.sent {
+  background: var(--theme-49382e, #49382e);
+  border-color: var(--theme-705340, #705340);
 }
-:root[data-theme="dark"] .file-attachment {
-  background: #20262c;
-  border-color: #4b5863;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .file-attachment {
+  background: var(--theme-20262c, #20262c);
+  border-color: var(--theme-4b5863, #4b5863);
   color: var(--ink);
 }
-:root[data-theme="dark"] .file-attachment:hover {
-  background: #303a43;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .file-attachment:hover {
+  background: var(--theme-303a43, #303a43);
 }
-:root[data-theme="dark"] .saved-note {
-  background: #49382e;
-  color: #ffe0c9;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .saved-note {
+  background: var(--theme-49382e, #49382e);
+  color: var(--theme-ffe0c9, #ffe0c9);
 }
-:root[data-theme="dark"] .note-editor button {
-  background: #293139;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .note-editor
+  button {
+  background: var(--theme-293139, #293139);
   border-color: var(--line);
   color: var(--ink);
 }
-:root[data-theme="dark"]
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
   :is(
     .message-composer .send-button,
     .note-editor button:first-child,
     .brand > span
   ) {
-  background: #9b5132;
-  color: #fff;
-  border-color: #b9704c;
+  background: var(--theme-9b5132, #9b5132);
+  color: var(--theme-fff, #fff);
+  border-color: var(--theme-b9704c, #b9704c);
 }
-:root[data-theme="dark"] .message-composer .send-button:hover:not(:disabled) {
-  background: #b36340;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .message-composer
+  .send-button:hover:not(:disabled) {
+  background: var(--theme-b36340, #b36340);
 }
-:root[data-theme="dark"] .empty-chat {
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .empty-chat {
   background:
-    radial-gradient(ellipse at center, #49382e55, transparent 65%), #171b20;
+    radial-gradient(
+      ellipse at center,
+      var(--theme-49382e55, #49382e55),
+      transparent 65%
+    ),
+    var(--theme-171b20, #171b20);
 }
-:root[data-theme="dark"] .empty-chat > span {
-  background: #49382e;
-  color: #e2a47b;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .empty-chat
+  > span {
+  background: var(--theme-49382e, #49382e);
+  color: var(--theme-e2a47b, #e2a47b);
   box-shadow: none;
 }
-:root[data-theme="dark"]
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
   :is(.chat-error, .attachment-error, .settings-account-actions > button) {
-  color: #ffb2a7;
+  color: var(--theme-ffb2a7, #ffb2a7);
 }
-:root[data-theme="dark"]
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
   :is(button, input, textarea, select, summary, a):focus-visible {
-  outline-color: #efb38d;
+  outline-color: var(--theme-efb38d, #efb38d);
 }
 
 /* Login uses the same page-wide theme, including all decorative surfaces. */
-:root[data-theme="dark"] .signin-screen {
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-screen {
   color-scheme: dark;
   color: var(--ink);
   background:
-    radial-gradient(ellipse at 12% 20%, #503c2e55, transparent 45%),
-    radial-gradient(ellipse at 87% 78%, #24453e55, transparent 43%), #171b20;
+    radial-gradient(
+      ellipse at 12% 20%,
+      var(--theme-503c2e55, #503c2e55),
+      transparent 45%
+    ),
+    radial-gradient(
+      ellipse at 87% 78%,
+      var(--theme-24453e55, #24453e55),
+      transparent 43%
+    ),
+    var(--theme-171b20, #171b20);
 }
-:root[data-theme="dark"] .signin-panel {
-  background: #20262c;
-  border-color: #3a444e;
-  box-shadow: 0 24px 65px #0003;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-panel {
+  background: var(--theme-20262c, #20262c);
+  border-color: var(--theme-3a444e, #3a444e);
+  box-shadow: 0 24px 65px var(--theme-0003, #0003);
 }
-:root[data-theme="dark"] :is(.signin-heading h1, .signin-field label) {
-  color: #e5ebee;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  :is(.signin-heading h1, .signin-field label) {
+  color: var(--theme-e5ebee, #e5ebee);
 }
-:root[data-theme="dark"]
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
   :is(.signin-heading p, .signin-footer, .signin-art-caption) {
-  color: #a7b4be;
+  color: var(--theme-a7b4be, #a7b4be);
 }
-:root[data-theme="dark"] .signin-brand {
-  color: #efb38d;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-brand {
+  color: var(--theme-efb38d, #efb38d);
 }
-:root[data-theme="dark"] .signin-symbol {
-  background: #49382e;
-  border-color: #705340;
-  color: #efb38d;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-symbol {
+  background: var(--theme-49382e, #49382e);
+  border-color: var(--theme-705340, #705340);
+  color: var(--theme-efb38d, #efb38d);
 }
-:root[data-theme="dark"] .signin-field input {
-  background: #293139;
-  color: #e5ebee;
-  border-color: #4b5863;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-field
+  input {
+  background: var(--theme-293139, #293139);
+  color: var(--theme-e5ebee, #e5ebee);
+  border-color: var(--theme-4b5863, #4b5863);
 }
-:root[data-theme="dark"] .signin-field input:focus {
-  background: #303a43;
-  border-color: #efb38d;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-field
+  input:focus {
+  background: var(--theme-303a43, #303a43);
+  border-color: var(--theme-efb38d, #efb38d);
 }
-:root[data-theme="dark"] .signin-password button {
-  color: #efb38d;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-password
+  button {
+  color: var(--theme-efb38d, #efb38d);
 }
-:root[data-theme="dark"] .signin-password button:hover {
-  background: #49382e;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-password
+  button:hover {
+  background: var(--theme-49382e, #49382e);
 }
-:root[data-theme="dark"] .signin-submit {
-  background: #9b5132;
-  border-color: #b9704c;
-  color: #fff;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-submit {
+  background: var(--theme-9b5132, #9b5132);
+  border-color: var(--theme-b9704c, #b9704c);
+  color: var(--theme-fff, #fff);
 }
-:root[data-theme="dark"] .signin-submit:hover:not(:disabled) {
-  background: #b36340;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-submit:hover:not(:disabled) {
+  background: var(--theme-b36340, #b36340);
 }
-:root[data-theme="dark"] .signin-footer {
-  border-color: #3a444e;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-footer {
+  border-color: var(--theme-3a444e, #3a444e);
 }
-:root[data-theme="dark"] .signin-error {
-  background: #462c2b;
-  border-color: #995953;
-  color: #ffb2a7;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-error {
+  background: var(--theme-462c2b, #462c2b);
+  border-color: var(--theme-995953, #995953);
+  color: var(--theme-ffb2a7, #ffb2a7);
 }
-:root[data-theme="dark"] .signin-field-error {
-  color: #ffb2a7;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-field-error {
+  color: var(--theme-ffb2a7, #ffb2a7);
 }
-:root[data-theme="dark"] .signin-field input[aria-invalid="true"] {
-  border-color: #ef998c;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-field
+  input[aria-invalid="true"] {
+  border-color: var(--theme-ef998c, #ef998c);
 }
-:root[data-theme="dark"] .signin-note {
-  background: #49382e;
-  border-color: #705340;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-note {
+  background: var(--theme-49382e, #49382e);
+  border-color: var(--theme-705340, #705340);
   box-shadow: none;
 }
-:root[data-theme="dark"] .signin-note-right {
-  background: #294039;
-  border-color: #446456;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-note-right {
+  background: var(--theme-294039, #294039);
+  border-color: var(--theme-446456, #446456);
 }
-:root[data-theme="dark"] .signin-note :is(strong, span) {
-  color: #e4d9cc;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-note
+  :is(strong, span) {
+  color: var(--theme-e4d9cc, #e4d9cc);
 }
-:root[data-theme="dark"] .signin-note .signin-note-icon {
-  background: #634938;
-  color: #ffe0c9;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-note
+  .signin-note-icon {
+  background: var(--theme-634938, #634938);
+  color: var(--theme-ffe0c9, #ffe0c9);
 }
-:root[data-theme="dark"] .signin-dots {
-  background: #23332e;
-  border-color: #446456;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-dots {
+  background: var(--theme-23332e, #23332e);
+  border-color: var(--theme-446456, #446456);
 }
-:root[data-theme="dark"] .signin-note-lines i {
-  background: #d2b29055;
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .signin-note-lines
+  i {
+  background: var(--theme-d2b29055, #d2b29055);
 }
 @media (max-width: 700px) {
   .theme-setting select {
     font-size: 16px;
   }
+}
+
+/* Dark theme for group info, the new-group panel, badges, and mention suggestions. */
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .group-info {
+  background: var(--theme-171b20, #171b20);
+  color: var(--ink);
+}
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  :is(
+    .group-info-bar,
+    .group-card,
+    .group-panel,
+    .mention-suggestions,
+    .group-info button:not(.icon-button):not([type="submit"])
+  ) {
+  background: var(--theme-20262c, #20262c);
+  border-color: var(--line);
+  color: var(--ink);
+}
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  :is(.group-info input:not([type="checkbox"]), .group-panel input) {
+  background: var(--theme-171b20, #171b20);
+  border-color: var(--line);
+  color: var(--ink);
+}
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  :is(
+    .group-badge,
+    .group-role-badge,
+    .group-chips li,
+    .mention-me,
+    .mention-suggestions li.active,
+    .mention-suggestions li:hover
+  ) {
+  background: var(--theme-3a2e27, #3a2e27);
+  color: var(--theme-f0c9ad, #f0c9ad);
+}
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  :is(.group-info button.danger, .group-info .group-leave) {
+  color: var(--theme-f0a39b, #f0a39b);
+  border-color: var(--theme-6b3a35, #6b3a35);
+}
+:root:is([data-theme="dark"], [data-theme="ocean"], [data-theme="forest"])
+  .group-info-error {
+  background: var(--theme-3b2422, #3b2422);
+  color: var(--theme-f0a39b, #f0a39b);
+}
+
+:root[data-theme="ocean"] {
+  --theme-171b20: #151c22;
+  --theme-20262c: #1e272e;
+  --theme-23332e: #222c34;
+  --theme-241b16: #161e24;
+  --theme-24453e55: #24364555;
+  --theme-293139: #26323c;
+  --theme-294039: #293640;
+  --theme-303a43: #2d3b46;
+  --theme-34433f: #2e3d49;
+  --theme-35473e: #303f4c;
+  --theme-3a2e27: #26323b;
+  --theme-3a444e: #354553;
+  --theme-446456: #425666;
+  --theme-49382e: #2e3d49;
+  --theme-49382e55: #2e3d4955;
+  --theme-4b5863: #44596a;
+  --theme-503c2e55: #2e415055;
+  --theme-51422f: #2f4251;
+  --theme-55616c: #4b6376;
+  --theme-634938: #385063;
+  --theme-705340: #405a70;
+  --theme-9b5132: #326c9b;
+  --theme-a7b4be: #a2b4c3;
+  --theme-b36340: #407fb3;
+  --theme-b9704c: #4c88b9;
+  --theme-d0e7db: #d0dde7;
+  --theme-d2b29055: #90b4d255;
+  --theme-d9f0e1: #d9e6f0;
+  --theme-e2a47b: #7bb4e2;
+  --theme-e4d9cc: #ccd9e4;
+  --theme-e5ebee: #e5eaee;
+  --theme-efb38d: #94c2e8;
+  --theme-f0c9ad: #afd2ee;
+  --theme-f4d7a6: #acd0ee;
+  --theme-ffe0c9: #d2e6f6;
+}
+
+:root[data-theme="forest"] {
+  --theme-171b20: #15221c;
+  --theme-20262c: #1e2e27;
+  --theme-23332e: #22342c;
+  --theme-241b16: #16241e;
+  --theme-24453e55: #24453655;
+  --theme-293139: #263c32;
+  --theme-294039: #294036;
+  --theme-303a43: #2d463b;
+  --theme-34433f: #2e493d;
+  --theme-35473e: #304c3f;
+  --theme-3a2e27: #263b32;
+  --theme-3a444e: #355345;
+  --theme-446456: #426656;
+  --theme-49382e: #2e493d;
+  --theme-49382e55: #2e493d55;
+  --theme-4b5863: #446a59;
+  --theme-503c2e55: #2e504155;
+  --theme-51422f: #2f5142;
+  --theme-55616c: #4b7663;
+  --theme-634938: #386350;
+  --theme-705340: #40705a;
+  --theme-9b5132: #329b6c;
+  --theme-a7b4be: #a2c3b4;
+  --theme-b36340: #40b37f;
+  --theme-b9704c: #4cb988;
+  --theme-d0e7db: #d0e7dd;
+  --theme-d2b29055: #90d2b455;
+  --theme-d9f0e1: #d9f0e6;
+  --theme-e2a47b: #7be2b4;
+  --theme-e4d9cc: #cce4d9;
+  --theme-e5ebee: #e5eeea;
+  --theme-efb38d: #94e8c2;
+  --theme-f0c9ad: #afeed2;
+  --theme-f4d7a6: #aceed0;
+  --theme-ffe0c9: #d2f6e6;
 }

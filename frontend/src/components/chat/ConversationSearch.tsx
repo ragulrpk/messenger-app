@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import Avatar from "./Avatar";
-import { findPeople } from "../../services/chatService";
+import { findPeople, findGroups } from "../../services/chatService";
 import type { ConversationType, UserProfile } from "../../types/chat";
 
-// Search the people directory and display selectable results.
+// Search the people directory and the user's own groups, and display selectable results.
 export default function ConversationSearch({
   query,
   onQuery,
@@ -17,19 +17,28 @@ export default function ConversationSearch({
   const [result, setResult] = useState<{
     term: string;
     people: UserProfile[];
+    groups: Awaited<ReturnType<typeof findGroups>>;
     error: string;
-  }>({ term: "", people: [], error: "" });
+  }>({ term: "", people: [], groups: [], error: "" });
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     let active = true;
     if (!term) return;
     const timer = window.setTimeout(async () => {
       try {
-        const people = await findPeople(term);
-        if (active) setResult({ term, people, error: "" });
+        const [people, groups] = await Promise.all([
+          findPeople(term),
+          findGroups(term),
+        ]);
+        if (active) setResult({ term, people, groups, error: "" });
       } catch (error) {
         if (active)
-          setResult({ term, people: [], error: (error as Error).message });
+          setResult({
+            term,
+            people: [],
+            groups: [],
+            error: (error as Error).message,
+          });
       }
     }, 200);
     return () => {
@@ -37,17 +46,18 @@ export default function ConversationSearch({
       window.clearTimeout(timer);
     };
   }, [term, retry]);
+  const matchingGroups = result.term === term ? result.groups : [];
   const loading = !!term && result.term !== term;
   return (
     <section className="conversation-search" aria-label="Search directory">
       <div className="search-field">
         <label className="sr-only" htmlFor="people-search">
-          Search people
+          Search people and groups
         </label>
         <span aria-hidden="true">⌕</span>
         <input
           id="people-search"
-          placeholder="Search people"
+          placeholder="Search people and groups"
           maxLength={100}
           value={query}
           onChange={(e) => onQuery(e.target.value)}
@@ -64,6 +74,27 @@ export default function ConversationSearch({
       </div>
       {term && (
         <div className="search-results" aria-busy={loading}>
+          {matchingGroups.length > 0 && (
+            <>
+              <h3>Groups</h3>
+              {matchingGroups.map((group) => (
+                <button
+                  className="search-result"
+                  key={group.id}
+                  onClick={() => onSelect("GROUP", group.id, group.name)}
+                >
+                  <Avatar name={group.name} group />
+                  <span>
+                    <strong>{group.name}</strong>
+                    <small>{group.memberCount} members</small>
+                  </span>
+                </button>
+              ))}
+              {matchingGroups.length === 50 && (
+                <p>Showing the first 50 groups. Refine your search for more.</p>
+              )}
+            </>
+          )}
           {loading ? (
             <p role="status">Searching…</p>
           ) : result.error ? (
@@ -71,7 +102,7 @@ export default function ConversationSearch({
               {result.error}{" "}
               <button
                 onClick={() => {
-                  setResult({ term: "", people: [], error: "" });
+                  setResult({ term: "", people: [], groups: [], error: "" });
                   setRetry((v) => v + 1);
                 }}
               >
@@ -79,7 +110,9 @@ export default function ConversationSearch({
               </button>
             </p>
           ) : !result.people.length ? (
-            <p role="status">No people found</p>
+            !matchingGroups.length && (
+              <p role="status">No people or groups found</p>
+            )
           ) : (
             <>
               <h3>People</h3>

@@ -42,6 +42,7 @@ export default function Profile() {
       subtitle: "Your basic information",
       fields: [
         ["Name", user.name],
+        ["GPF number", user.gpfNumber],
         ["Date of birth", profileDate(user.dateOfBirth)],
         ["Date of joining", profileDate(user.dateOfJoining)],
       ],
@@ -58,6 +59,7 @@ export default function Profile() {
       title: "Organisation",
       subtitle: "Your role and office",
       fields: [
+        ["Cadre", user.cadre],
         ["Designation", user.designation],
         ["Circle", user.circle],
         ["Zone", user.zone],
@@ -90,7 +92,9 @@ export default function Profile() {
               <h2>{user.name}</h2>
               {user.username && <p>@{user.username}</p>}
               <p className="profile-role">
-                {user.designation?.trim() || "Designation not provided"}
+                {user.cadre?.trim() ||
+                  user.designation?.trim() ||
+                  "Cadre not provided"}
               </p>
             </div>
             <div className="profile-identity-footer">
@@ -127,6 +131,13 @@ export default function Profile() {
                 </dl>
               </section>
             ))}
+            {user.passwordResetAt && (
+              <p className="password-notice" role="note">
+                An administrator last reset your password on{" "}
+                {new Date(user.passwordResetAt).toLocaleString()}. If you did
+                not ask for this, tell your administrator.
+              </p>
+            )}
             <ChangePassword />
           </div>
         </section>

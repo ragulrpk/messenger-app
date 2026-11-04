@@ -21,8 +21,13 @@ public class RedisLoginRateLimiter implements LoginRateLimiter {
                     + "if count == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]); end; "
                     + "return count;",
             Long.class);
-    private static final DefaultRedisScript<Long> CLEAR = new DefaultRedisScript<>(
-            "return redis.call('DEL', KEYS[1]);", Long.class);
+    // DECR keeps the window's expiry. A key that already expired is left alone rather than going negative.
+    private static final DefaultRedisScript<Long> RELEASE = new DefaultRedisScript<>(
+            "if redis.call('EXISTS', KEYS[1]) == 0 then return 0; end; "
+                    + "local count = redis.call('DECR', KEYS[1]); "
+                    + "if count <= 0 then redis.call('DEL', KEYS[1]); end; "
+                    + "return count;",
+            Long.class);
     private final StringRedisTemplate redis;
     private final int limit;
     private final Duration window;
@@ -46,7 +51,7 @@ public class RedisLoginRateLimiter implements LoginRateLimiter {
     }
 
     @Override
-    public void clear(String key) { redis.execute(CLEAR, List.of(redisKey(key))); }
+    public void release(String key) { redis.execute(RELEASE, List.of(redisKey(key))); }
 
     @Override
     public Duration window() { return window; }

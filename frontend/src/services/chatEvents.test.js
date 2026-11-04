@@ -45,9 +45,11 @@ test("live events use wss, reconnect, refresh on ready and clean up on account c
   const typing = [];
   let expired = 0;
   window.addEventListener("messenger:session-expired", () => expired++);
+  const liveStates = [];
   const stop = connectChatEvents(
     () => refreshes++,
     (id, active) => typing.push({ id, active }),
+    (live) => liveStates.push(live),
   );
   try {
     assert.equal(
@@ -68,7 +70,13 @@ test("live events use wss, reconnect, refresh on ready and clean up on account c
       { id, active: false },
     ]);
     assert.equal(refreshes, 2, "typing does not refetch message history");
+    assert.deepEqual(liveStates, [true], "ready means live hints flow");
     instances[0].close(1006);
+    assert.deepEqual(
+      liveStates,
+      [true, false],
+      "a dropped connection restores normal polling",
+    );
     const retry = [...timers.entries()].find(([, value]) => value.delay < 2000);
     assert.ok(retry);
     timers.delete(retry[0]);

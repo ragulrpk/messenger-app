@@ -21,8 +21,10 @@ For forgotten passwords, login offers administrator-assisted recovery instructio
 - Conversations and history load in pages of 50. Use **Load more conversations** or **Load older messages**. Incoming-message catch-up follows the last fetched sequence, including when more than one page arrives while disconnected.
 - The composer accepts 1–4000 characters after trimming. Enter sends, Shift+Enter inserts a newline, and IME composition does not send. Sending disables the composer until acknowledged. Errors preserve the draft and offer **Retry send**. Retrying unchanged text uses the same client identifier, including after switching conversations, so a lost server response does not duplicate the message.
 - Drafts survive switching conversations, mobile Back, and visits to the profile while the chat page remains mounted. Reloading or changing accounts clears unsent drafts and retry identifiers. After an uncertain send and a full reload, check restored history before composing the same message again.
-- Attachments are disabled until an upload/download backend exists. Groups, delivered/read receipts, and shared presence are not part of this milestone.
-- Pin, mute, manual read/unread markers, hiding conversations, status, and personal notes remain local session preferences. They reset on reload and do not represent server read receipts or notification settings. Removing from the recent list never deletes server messages; searching for the person restores the row.
+- Up to 5 files (50 MB each) can be attached per send; each file is sent as its own message, with the caption on the first. Groups and delivered/read receipts for the other person are not part of this milestone.
+- Pin, mute, manual read/unread markers, and removing a conversation from the list are saved per account and survive reloads and other devices. Unread counts come from the server; opening a conversation in a visible tab marks it read, and marking the open conversation unread closes it. Removing never deletes server messages; searching for the person, or a new message, restores the row.
+- Your status and personal note are saved to your account and shown to the people you chat with, next to their name in the list and conversation header. The status is what you chose; it is not set automatically when you sign out.
+- Settings offers desktop notifications for new messages from others when the conversation is not on screen. Muted conversations never notify. Notifications only appear while the app is open in a tab.
 
 ## Authentication and profile
 
@@ -47,3 +49,7 @@ Run `npm test`, `npm run build`, and `npm run lint`. Build includes TypeScript c
 The mounted chat integration test covers directory lookup, a server commit followed by a lost response, duplicate Enter prevention, retry after switching conversations, incoming-message catch-up, older history, reload restoration, and account isolation. Authentication tests cover stale responses and session-expiry events. The backend suite verifies persistence, membership authorization, concurrency, pagination, and CSRF.
 
 For a manual end-to-end check, sign in as two provisioned users in separate browser profiles (or normal and private windows), find the other user, exchange text, and reload both windows. Confirm both histories match. An unrelated third user must neither list nor access that conversation.
+
+### Notifications
+
+Desktop notifications consume individual incoming-message events rather than the latest conversation preview. Chat settings can enable browser push after the backend's VAPID keys are configured. `/notifications-sw.js` handles notification display, deduplication across tabs and clicks; it does not cache application or API responses. It must be served at the origin root over HTTPS (or localhost). Keep the worker outside immutable asset caching. Background delivery requires browser permission and operating-system support.

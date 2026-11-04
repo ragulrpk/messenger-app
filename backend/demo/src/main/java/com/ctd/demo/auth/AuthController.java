@@ -28,11 +28,49 @@ public class AuthController {
         return new CsrfResponse(token.getHeaderName(), token.getToken());
     }
 
-    /** Authenticates credentials, rotates the session, and saves its security context. */
+    /** Employee sign-in with GPF number or username. Returns {user} when signed in, or
+     *  {status:"PASSWORD_CHANGE_REQUIRED", passwordChangeRequired} when a temporary password must be replaced. */
     @PostMapping("/login")
-    public LoginResponse login(@Valid @RequestBody LoginRequest credentials,
-                               HttpServletRequest request, HttpServletResponse response) {
+    public Object login(@Valid @RequestBody LoginRequest credentials,
+                        HttpServletRequest request, HttpServletResponse response) {
         return loginService.login(credentials, request, response);
+    }
+
+    /** Administrator sign-in with a password. */
+    @PostMapping("/admin-login")
+    public Object adminLogin(@Valid @RequestBody LoginRequest credentials,
+                             HttpServletRequest request, HttpServletResponse response) {
+        return loginService.adminLogin(credentials, request, response);
+    }
+
+    /** Finishes the sign-in in progress with the new password that replaces a temporary one. */
+    @PostMapping("/login/verify")
+    public LoginResponse verify(@RequestBody LoginOrchestrationService.VerifyRequest body,
+                                HttpServletRequest request, HttpServletResponse response) {
+        return loginService.verify(body, request, response);
+    }
+
+    /** Forgot password: starts a reset for the account with this GPF number or username. */
+    @PostMapping("/password-reset/start")
+    public LoginOrchestrationService.Challenge startReset(@RequestBody LoginOrchestrationService.ResetStartRequest body,
+            HttpServletRequest request, HttpServletResponse response) {
+        return loginService.startReset(body, request, response);
+    }
+
+    /** Sets a new password for the reset in progress; every session of the account ends. */
+    @PostMapping("/password-reset/complete")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void completeReset(@RequestBody LoginOrchestrationService.VerifyRequest body, HttpServletRequest request) {
+        loginService.completeReset(body, request);
+    }
+
+    /** The person is using the app: typing, clicking or scrolling in a visible tab. Only this keeps a session
+     *  from timing out; background requests do not. */
+    @PostMapping("/activity")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void activity(HttpServletRequest request) {
+        var session = request.getSession(false);
+        if (session != null) session.setAttribute(LoginOrchestrationService.LAST_ACTIVITY, System.currentTimeMillis());
     }
 
     /** Returns the profile belonging to the current authenticated session. */

@@ -34,20 +34,35 @@ test("administrator navigation is visible only to the server-designated administ
       administrator: true,
     },
   };
-  assert.equal(
-    render("/admin/password-reset", { initializing: false, user: null }),
-    "",
-  );
+  assert.equal(render("/admin", { initializing: false, user: null }), "");
+  assert.doesNotMatch(render("/admin", member), /id="admin-title"/);
+  assert.doesNotMatch(render("/chat", member), /href="\/admin"/);
+  assert.match(render("/chat", admin), /href="\/admin"[^>]*>Administration/);
+  assert.match(render("/admin", admin), /id="admin-title"/);
+  // The old reset address opens the administration page instead of a stale form.
   assert.doesNotMatch(
-    render("/admin/password-reset", member),
-    /id="admin-reset-title"/,
-  );
-  assert.doesNotMatch(render("/chat", member), /Reset a user/);
-  assert.match(render("/chat", admin), /Reset a user/);
-  assert.match(
     render("/admin/password-reset", admin),
-    /Your administrator password/,
+    /admin-newPassword/,
   );
+});
+
+test("employees, administrators and forgotten passwords each have their own sign-in page", () => {
+  const signedOut = { initializing: false, user: null };
+  const employee = render("/login", signedOut);
+  assert.match(employee, /GPF number or username/);
+  assert.match(employee, /href="\/forgot-password"/);
+  assert.match(employee, /href="\/admin\/login"[^>]*>Administrator sign-in/);
+  const admin = render("/admin/login", signedOut);
+  assert.match(admin, /Administrator sign-in/);
+  assert.match(admin, /administrator username and password/);
+  assert.match(admin, /href="\/login"[^>]*>Employee sign-in/);
+  const forgot = render("/forgot-password", signedOut);
+  assert.match(forgot, /Reset your password/);
+  assert.match(forgot, /GPF number or username/);
+  // Signed-in people go straight on to the app instead.
+  const user = { id: "u", username: "u", name: "U", administrator: false };
+  assert.equal(render("/login", { initializing: false, user }), "");
+  assert.equal(render("/forgot-password", { initializing: false, user }), "");
 });
 
 test("login provides administrator-assisted forgot-password instructions without a public reset form", () => {

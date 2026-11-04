@@ -220,6 +220,9 @@
 .signin-heading {
   margin-bottom: 26px;
 }
+.signin-heading .brand {
+  margin-bottom: 24px;
+}
 .signin-symbol {
   display: block;
   width: 48px;
@@ -366,18 +369,45 @@
   font-size: 11px;
   line-height: 1.6;
 }
-/* 2026-09-23: Accessible, expandable administrator-assisted recovery instructions. */
-.signin-recovery {
-  margin-top: 18px;
-  font-size: 13px;
+/* Explains the next step (where the code was sent) or why the person was signed out. */
+.signin-notice {
+  margin: 0 0 4px;
+  padding: 10px 12px;
+  border: 1px solid #d9e5dd;
+  border-radius: 9px;
+  background: #f1f7f3;
+  color: #2f4a3b;
+  font-size: 12px;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
-.signin-recovery summary {
-  cursor: pointer;
+/* Forgot password, the other sign-in page, resend and start over. */
+.signin-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+.signin-links a,
+.signin-links button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
-.signin-recovery p {
-  margin-bottom: 0;
+.signin-links button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+a.signin-submit {
+  text-decoration: none;
 }
 @media (max-width: 1000px) {
   .signin-note {

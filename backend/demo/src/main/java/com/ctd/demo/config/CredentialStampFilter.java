@@ -33,6 +33,14 @@ public class CredentialStampFilter extends OncePerRequestFilter {
                 errors.write(response, 401, "SESSION_REVOKED", "Please sign in again.");
                 return;
             }
+            // A temporary password never yields a session: sign-in requires the emailed code and a new password.
+            // A session whose account was since given one ends here.
+            if (user.get().isMustChangePassword()) {
+                session.invalidate();
+                SecurityContextHolder.clearContext();
+                errors.write(response, 401, "PASSWORD_CHANGE_REQUIRED", "Your password must be changed. Sign in again.");
+                return;
+            }
         }
         chain.doFilter(request, response);
     }

@@ -42,7 +42,9 @@ public class InMemoryLoginRateLimiter implements LoginRateLimiter {
     }
 
     @Override
-    public synchronized void clear(String key) { attempts.remove(key); }
+    public synchronized void release(String key) {
+        attempts.computeIfPresent(key, (ignored, count) -> count > 1 ? count - 1 : null);
+    }
 
     @Override
     public Duration window() { return WINDOW; }

@@ -9,15 +9,11 @@
   color: var(--ink);
   white-space: nowrap;
 }
-.brand > span {
-  display: grid;
-  place-items: center;
+.brand > img {
+  display: block;
+  flex-shrink: 0;
   width: 40px;
   height: 40px;
-  background: var(--teal);
-  color: white;
-  border-radius: 50% 50% 50% 12%;
-  font-size: 27px;
 }
 .eyebrow {
   color: var(--muted);
@@ -399,4 +395,46 @@
   .composer > div {
     justify-content: flex-end;
   }
+}
+
+/* The inactivity warning shown 30 seconds before an automatic sign-out. */
+.idle-warning {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 1000;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  width: min(520px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid var(--line, #ddd6cd);
+  border-radius: 12px;
+  background: #fffaf3;
+  color: var(--ink, #222);
+  box-shadow: 0 10px 30px #0002;
+  font-size: 14px;
+}
+.idle-warning p {
+  flex: 1 1 240px;
+  margin: 0;
+  line-height: 1.5;
+}
+.idle-warning button {
+  border: 0;
+  border-radius: 9px;
+  padding: 10px 14px;
+  background: var(--ink, #222);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+:root[data-theme="dark"] .idle-warning {
+  background: #20262c;
+}
+:root[data-theme="dark"] .idle-warning button {
+  color: #171b20;
 }

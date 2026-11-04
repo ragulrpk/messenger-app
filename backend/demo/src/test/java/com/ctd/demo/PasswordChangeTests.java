@@ -63,13 +63,14 @@ class PasswordChangeTests {
     @Test
     void changesOnlySessionAccountAndRejectsAllOlderSessions() throws Exception {
         var first = login(OLD);
+        // One device at a time: signing in again has already ended the first session.
         var second = login(OLD);
+        mvc.perform(get("/api/v1/users/me").session(first)).andExpect(status().isUnauthorized());
         String otherHash = users.findByUsername("other").orElseThrow().getPasswordHash();
-        mvc.perform(post(PATH).session(first).header("X-CSRF-TOKEN", csrf(first))
+        mvc.perform(post(PATH).session(second).header("X-CSRF-TOKEN", csrf(second))
                 .contentType(MediaType.APPLICATION_JSON).content(body(OLD, NEW, NEW)))
                 .andExpect(status().isNoContent()).andExpect(content().string(""));
-        assertThat(first.isInvalid()).isTrue();
-        mvc.perform(get("/api/v1/users/me").session(second)).andExpect(status().isUnauthorized());
+        assertThat(second.isInvalid()).isTrue();
         String stored = users.findByUsername("owner").orElseThrow().getPasswordHash();
         assertThat(stored).isNotEqualTo(NEW);
         assertThat(encoder.matches(NEW, stored)).isTrue();

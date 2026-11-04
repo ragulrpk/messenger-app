@@ -1,29 +1,44 @@
 import { Link } from "react-router-dom";
-import { useTheme, setTheme } from "../../context/theme";
-import { useState } from "react";
+import { useTheme, setTheme, isTheme } from "../../context/theme";
+import { useEffect, useState } from "react";
 import Avatar from "./Avatar";
 import { statusLabels } from "./presence";
+import {
+  notificationState,
+  backgroundNotificationState,
+  configureBackgroundNotifications,
+  requestNotifications,
+} from "../../services/notifications";
 import type { PresenceStatus, User } from "../../types/chat";
 
 interface Props {
   user: User & { username?: string };
   onStatusChange: (value: PresenceStatus) => void;
   onNoteChange: (value: string) => void;
+  presenceError?: string;
   signOut: () => void;
   signingOut: boolean;
   logoutError: string;
 }
-// Render account, presence, note, theme, and sign-out controls.
+// Render account, presence, note, notification, theme, and sign-out controls.
 export default function ChatSettings({
   user,
   onStatusChange,
   onNoteChange,
+  presenceError,
   signOut,
   signingOut,
   logoutError,
 }: Props) {
   const [editingNote, setEditingNote] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
+  const [notifications, setNotifications] = useState(notificationState);
+  const [background, setBackground] = useState(backgroundNotificationState);
+  useEffect(() => {
+    const changed = () => setBackground(backgroundNotificationState());
+    window.addEventListener("messenger:push-status", changed);
+    return () => window.removeEventListener("messenger:push-status", changed);
+  }, []);
   const theme = useTheme();
   const status = user.status ?? "online";
   return (
@@ -71,13 +86,13 @@ export default function ChatSettings({
         {user.administrator === true && (
           <Link
             className="settings-link"
-            to="/admin/password-reset"
+            to="/admin"
             onClick={(event) => {
               const menu = event.currentTarget.closest("details");
               if (menu) menu.open = false;
             }}
           >
-            Reset a user’s password
+            Administration
           </Link>
         )}
         <label className="status-setting" htmlFor="my-status">
@@ -159,14 +174,68 @@ export default function ChatSettings({
             id="app-theme"
             value={theme}
             onChange={(e) =>
-              setTheme(e.target.value === "dark" ? "dark" : "light")
+              isTheme(e.target.value) && setTheme(e.target.value)
             }
           >
             <option value="light">Light</option>
             <option value="dark">Dark</option>
+            <option value="ocean">Ocean Blue</option>
+            <option value="forest">Forest Green</option>
           </select>
         </label>
-        <small>Status and notes apply to this local session.</small>
+        {presenceError && (
+          <p className="chat-error" role="alert">
+            {presenceError} Your status was not saved.
+          </p>
+        )}
+        <small>People you chat with can see your status and note.</small>
+        {notifications !== "unsupported" && (
+          <div className="notification-setting">
+            <strong>Desktop notifications</strong>
+            {notifications === "default" ? (
+              <button
+                type="button"
+                className="settings-link"
+                onClick={() =>
+                  void requestNotifications(user.id).then(setNotifications)
+                }
+              >
+                Turn on notifications
+              </button>
+            ) : (
+              <small>
+                {notifications === "granted"
+                  ? "On. Mute a conversation to silence it."
+                  : "Blocked. Allow notifications for this site in your browser settings."}
+              </small>
+            )}
+            {notifications === "granted" && (
+              <>
+                <small>
+                  {background === "enabled"
+                    ? "Background notifications are on, even when this app is closed."
+                    : background === "unconfigured"
+                      ? "Background notifications are unavailable on this server."
+                      : background === "unsupported"
+                        ? "This browser supports desktop alerts only."
+                        : background === "error"
+                          ? "Background notifications could not be enabled. Please retry."
+                          : "Enable background notifications to receive alerts when this app is closed."}
+                </small>
+                {(background === "off" || background === "error") && (
+                  <button
+                    className="settings-link"
+                    onClick={() =>
+                      void configureBackgroundNotifications(user.id, true)
+                    }
+                  >
+                    Enable background notifications
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
         <div className="settings-account-actions">
           <a
             href="https://tnmail.gov.in/"

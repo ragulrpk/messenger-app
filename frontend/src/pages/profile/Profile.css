@@ -264,6 +264,81 @@
 :root[data-theme="dark"] .password-form .password-error {
   color: #ffb4b4;
 }
+/* Administration: accounts, one-time temporary passwords and the audit trail. */
+.admin-error {
+  margin: 0;
+  color: #b53838;
+  font-size: 13px;
+}
+:root[data-theme="dark"] .admin-error {
+  color: #ffb4b4;
+}
+.admin-secret {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--profile-tint);
+}
+.admin-accounts,
+.admin-audit {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.admin-accounts li {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  min-width: 0;
+}
+.admin-accounts .password-actions button {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.admin-username {
+  color: var(--muted);
+  font-size: 13px;
+}
+.admin-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.admin-badges span {
+  font-size: 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--muted);
+}
+.admin-audit {
+  padding: 8px 22px 22px;
+}
+.admin-audit li {
+  font-size: 13px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.admin-audit time {
+  color: var(--muted);
+}
+.password-notice {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--profile-tint);
+  font-size: 13px;
+  line-height: 1.5;
+}
 :root[data-theme="dark"] .profile-page {
   background: #171b20;
   --ink: #e5ebee;
@@ -319,4 +394,67 @@
   .profile-section dl {
     padding: 18px;
   }
+}
+/* Administration tabs, clickable rows and small layouts. */
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+  flex-wrap: wrap;
+}
+.admin-tabs button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: var(--profile-surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.admin-tabs button[aria-selected="true"] {
+  background: var(--ink);
+  color: var(--profile-surface);
+}
+.admin-row {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-row:disabled {
+  cursor: wait;
+}
+.admin-choice {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 13px;
+}
+.admin-choice legend {
+  margin-bottom: 6px;
+}
+.admin-search {
+  display: flex;
+  gap: 8px;
+}
+.admin-search input {
+  flex: 1;
+  min-width: 0;
+}
+.admin-search button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 14px;
+  background: var(--profile-tint);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
 }

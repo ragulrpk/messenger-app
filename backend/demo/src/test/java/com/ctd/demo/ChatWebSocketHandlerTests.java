@@ -75,4 +75,53 @@ class ChatWebSocketHandlerTests {
         verify(sockets[8]).sendMessage(any(TextMessage.class));
         handler.shutdown();
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void hintsReachOnlyTheirUserAndReuseARecentLoginCheck() throws Exception {
+        var registry = new SessionRegistryImpl();
+        var users = mock(UserRepository.class);
+        var env = new MockEnvironment();
+        env.setActiveProfiles("test");
+        var handler = new ChatWebSocketHandler(registry, users, mock(ObjectProvider.class), env);
+        var alice = socket("alice", registry, users);
+        var bob = socket("bob", registry, users);
+        handler.afterConnectionEstablished(alice);
+        handler.afterConnectionEstablished(bob);
+        clearInvocations(alice, bob, users);
+        for (int i = 0; i < 5; i++) handler.changed("alice");
+        verify(alice, times(5)).sendMessage(new TextMessage("refresh"));
+        verify(bob, never()).sendMessage(any());
+        // Validated moments ago at connect: hints skip the session store and database.
+        verify(users, never()).findByUsername(anyString());
+        // The heartbeat always rechecks every socket in full.
+        handler.heartbeat();
+        verify(users).findByUsername("alice");
+        verify(users).findByUsername("bob");
+        // A closed socket leaves the user index too.
+        handler.afterConnectionClosed(alice, CloseStatus.NORMAL);
+        clearInvocations(alice);
+        handler.changed("alice");
+        verify(alice, never()).sendMessage(any());
+        handler.shutdown();
+    }
+
+    private static WebSocketSession socket(String name, SessionRegistryImpl registry, UserRepository users) {
+        registry.registerNewSession("http-" + name, name);
+        when(users.findByUsername(name)).thenReturn(Optional.of(new AppUser(name, name, "unused")));
+        var http = mock(HttpSession.class);
+        when(http.getId()).thenReturn("http-" + name);
+        var auth = UsernamePasswordAuthenticationToken.authenticated(name, null, java.util.List.of());
+        when(http.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY))
+                .thenReturn(new SecurityContextImpl(auth));
+        when(http.getAttribute(com.ctd.demo.auth.CredentialStamp.ATTRIBUTE))
+                .thenReturn(com.ctd.demo.auth.CredentialStamp.of("unused"));
+        var socket = mock(WebSocketSession.class);
+        when(socket.getId()).thenReturn("socket-" + name);
+        when(socket.getPrincipal()).thenReturn(auth);
+        when(socket.isOpen()).thenReturn(true);
+        when(socket.getAttributes()).thenReturn(new HashMap<>());
+        socket.getAttributes().put(ChatWebSocketHandler.HTTP_SESSION, http);
+        return socket;
+    }
 }

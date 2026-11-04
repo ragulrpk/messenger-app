@@ -4,9 +4,15 @@ import type { Conversation, ConversationAction } from "../../types/chat";
 export default function ConversationActions({
   conversation: c,
   onAction,
+  onSharedFiles,
+  onClearChat,
+  clearing,
 }: {
   conversation: Conversation;
   onAction: (id: string, action: ConversationAction) => void;
+  onSharedFiles?: () => void;
+  onClearChat?: () => void;
+  clearing?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -58,6 +64,28 @@ export default function ConversationActions({
           aria-label={`Actions for ${c.name}`}
         >
           <strong>{c.name}</strong>
+          {onSharedFiles && (
+            <button
+              onClick={() => {
+                setOpen(false);
+                onSharedFiles();
+              }}
+            >
+              Shared files
+            </button>
+          )}
+          {onClearChat && (
+            <button
+              disabled={clearing}
+              onClick={() => {
+                setOpen(false);
+                trigger.current?.focus();
+                onClearChat();
+              }}
+            >
+              {clearing ? "Clearing…" : "Clear chat"}
+            </button>
+          )}
           <button onClick={() => act("pin")}>
             {c.pinned ? "Unpin" : "Pin"} {c.name}
           </button>

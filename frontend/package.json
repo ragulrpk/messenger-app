@@ -8,7 +8,7 @@
     "build": "npm run typecheck && vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "node --test src/App.test.js src/context/AuthProvider.test.js src/context/theme.test.js src/services/authService.test.js src/services/chatEvents.test.js src/pages/login/useLogin.test.js src/pages/profile/ChangePassword.test.js src/pages/admin/AdminPasswordReset.test.js src/components/chat/chat.test.js",
+    "test": "node --test src/services/notificationFeed.test.js src/App.test.js src/context/AuthProvider.test.js src/context/theme.test.js src/services/authService.test.js src/services/chatEvents.test.js src/pages/login/useLogin.test.js src/pages/login/Login.test.js src/pages/profile/ChangePassword.test.js src/pages/admin/Administration.test.js src/components/chat/chat.test.js",
     "preview": "vite preview",
     "format": "prettier . --write",
     "format:check": "prettier . --check"

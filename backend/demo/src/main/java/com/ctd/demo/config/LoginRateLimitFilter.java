@@ -11,9 +11,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/** Limits login attempts per client within a time window before requests reach authentication. */
+/** Limits sign-in and password-reset attempts per client within a time window before requests reach them. */
 public class LoginRateLimitFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(LoginRateLimitFilter.class);
+    /** The public (anonymous) sign-in steps; all share one per-client budget. */
+    public static final java.util.List<String> SIGN_IN_PATHS = java.util.List.of("/api/v1/users/login",
+            "/api/v1/users/admin-login", "/api/v1/users/login/verify", "/api/v1/users/password-reset/start", "/api/v1/users/password-reset/complete");
+    /** Starting a reset answers "does this account exist?", so a success never refunds its slot. */
+    private static final String RESET_START = "/api/v1/users/password-reset/start";
     private final LoginRateLimiter limiter;
     private final SecurityErrors errors;
 
@@ -26,7 +31,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     /** Applies this filter only to login POST requests. */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !"POST".equals(request.getMethod()) || !"/api/v1/users/login".equals(request.getServletPath());
+        return !"POST".equals(request.getMethod()) || !SIGN_IN_PATHS.contains(request.getServletPath());
     }
 
     /** Returns a rate-limit response or passes the request to the next filter. */
@@ -43,7 +48,9 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
                 return;
             }
             chain.doFilter(request, response);
-            if (response.getStatus() >= 200 && response.getStatus() < 300) limiter.clear(key);
+            // A success costs nothing, but must not wipe the failures already counted for this client.
+            if (response.getStatus() >= 200 && response.getStatus() < 300 && !RESET_START.equals(request.getServletPath()))
+                limiter.release(key);
         } catch (DataAccessException exception) {
             log.error("Login rate limiter unavailable", exception);
             errors.write(response, 503, "SERVICE_UNAVAILABLE", "Login is temporarily unavailable.");

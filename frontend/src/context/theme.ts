@@ -1,6 +1,10 @@
 import { useSyncExternalStore } from "react";
 
-export type Theme = "light" | "dark";
+export const themes = ["light", "dark", "ocean", "forest"] as const;
+export type Theme = (typeof themes)[number];
+export function isTheme(value: string | null): value is Theme {
+  return themes.some((theme) => theme === value);
+}
 const storageKey = "messenger.theme";
 let currentTheme: Theme = "light";
 const listeners = new Set<() => void>();
@@ -15,9 +19,8 @@ function applyTheme(theme: Theme) {
 // Read the saved theme, defaulting to light when storage is unavailable.
 function savedTheme(): Theme {
   try {
-    return window.localStorage.getItem(storageKey) === "dark"
-      ? "dark"
-      : "light";
+    const saved = window.localStorage.getItem(storageKey);
+    return isTheme(saved) ? saved : "light";
   } catch {
     return "light";
   }

@@ -59,6 +59,22 @@ test("theme persists across login/logout and reload, syncs tabs, and tolerates b
     await render({ id: "taylor", name: "Taylor" });
     assert.ok(document.querySelector(".messenger-chat"));
     assert.equal(document.getElementById("app-theme").value, "dark");
+    for (const theme of ["ocean", "forest"]) {
+      const select = document.getElementById("app-theme");
+      await act(async () => {
+        select.value = theme;
+        select.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+      });
+      assert.equal(document.documentElement.dataset.theme, theme);
+      assert.equal(window.localStorage.getItem("messenger.theme"), theme);
+      stop();
+      await act(async () => {
+        stop = initializeTheme();
+      });
+      assert.equal(document.documentElement.dataset.theme, theme);
+      assert.equal(select.value, theme);
+    }
+    await act(async () => setTheme("dark"));
     await render(null);
     assert.ok(document.querySelector(".signin-screen"));
     assert.equal(

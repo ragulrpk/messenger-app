@@ -1,22 +1,41 @@
+import { Link } from "react-router-dom";
 import useLogin from "./useLogin";
 import { useAuth } from "../../context/useAuth";
 import "./Login.css";
+import Brand from "../../components/Brand";
 
-// Render the sign-in form and its validation feedback.
-export default function Login() {
-  const { sessionNotice } = useAuth();
-  const {
-    username,
-    password,
-    showPassword,
-    errors,
-    error,
-    loading,
-    handleChange,
-    handleSubmit,
-    togglePassword,
-  } = useLogin();
+// A labelled input with its error, styled like the rest of the sign-in form.
+export function Field({
+  id,
+  label,
+  error,
+  type = "text",
+  autoComplete,
+  ...input
+}) {
+  return (
+    <div className="signin-field">
+      <label htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        name={id}
+        type={type}
+        autoComplete={autoComplete}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        {...input}
+      />
+      {error && (
+        <p className="signin-field-error" id={`${id}-error`} role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
+// The page frame shared by sign-in, administrator sign-in and forgot password.
+export function SignInFrame({ title, subtitle, children }) {
   return (
     <main className="signin-screen">
       <div className="signin-art" aria-hidden="true">
@@ -48,73 +67,67 @@ export default function Login() {
       </div>
       <section className="signin-panel" aria-labelledby="signin-title">
         <header className="signin-heading">
-          <svg
-            className="signin-symbol"
-            viewBox="0 0 40 40"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M8 9h24v17H19l-8 7v-7H8V9Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M15 16h10M15 21h6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-          <span className="signin-brand">MESSENGER</span>
-          <h1 id="signin-title">Hello again!</h1>
-          <p>Your people are just a hello away.</p>
+          <Brand />
+          <h1 id="signin-title">{title}</h1>
+          <p>{subtitle}</p>
         </header>
+        {children}
+      </section>
+    </main>
+  );
+}
 
-        {sessionNotice && <p role="status">{sessionNotice}</p>}
+// Employee or administrator sign-in: password, then a new password when the
+// current one is temporary.
+export default function Login({ admin = false }) {
+  const { sessionNotice } = useAuth();
+  const form = useLogin(admin);
+  const { errors, loading, challenge } = form;
+
+  return (
+    <SignInFrame
+      title={admin ? "Administrator sign-in" : "Hello again!"}
+      subtitle={
+        admin
+          ? "Sign in with your administrator username and password."
+          : "Your people are just a hello away."
+      }
+    >
+      {sessionNotice && !challenge && (
+        <p className="signin-notice" role="status">
+          {sessionNotice}
+        </p>
+      )}
+      {!challenge ? (
         <form
           className="signin-form"
           noValidate
-          onSubmit={handleSubmit}
+          onSubmit={form.handleSubmit}
           aria-busy={loading}
         >
-          <div className="signin-field">
-            <label htmlFor="username">Username</label>
-            <input
-              id="username"
-              name="username"
-              type="text"
-              autoComplete="username"
-              placeholder="Enter your username"
-              value={username}
-              onChange={handleChange}
-              disabled={loading}
-              aria-invalid={Boolean(errors.username)}
-              aria-describedby={errors.username ? "username-error" : undefined}
-            />
-            {errors.username && (
-              <p
-                className="signin-field-error"
-                id="username-error"
-                role="alert"
-              >
-                {errors.username}
-              </p>
-            )}
-          </div>
-
+          <Field
+            id="username"
+            label={admin ? "Username" : "GPF number or username"}
+            autoComplete="username"
+            placeholder={
+              admin ? "Enter your username" : "Enter your GPF number"
+            }
+            value={form.username}
+            onChange={form.handleChange}
+            disabled={loading}
+            error={errors.username}
+          />
           <div className="signin-field">
             <label htmlFor="password">Password</label>
             <div className="signin-password">
               <input
                 id="password"
                 name="password"
-                type={showPassword ? "text" : "password"}
+                type={form.showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 placeholder="Enter your password"
-                value={password}
-                onChange={handleChange}
+                value={form.password}
+                onChange={form.handleChange}
                 disabled={loading}
                 aria-invalid={Boolean(errors.password)}
                 aria-describedby={
@@ -123,10 +136,12 @@ export default function Login() {
               />
               <button
                 type="button"
-                onClick={togglePassword}
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={form.togglePassword}
+                aria-label={
+                  form.showPassword ? "Hide password" : "Show password"
+                }
               >
-                {showPassword ? "Hide" : "Show"}
+                {form.showPassword ? "Hide" : "Show"}
               </button>
             </div>
             {errors.password && (
@@ -139,10 +154,9 @@ export default function Login() {
               </p>
             )}
           </div>
-
-          {error && (
+          {form.error && (
             <div className="signin-error" role="alert">
-              {error}
+              {form.error}
             </div>
           )}
           <button className="signin-submit" type="submit" disabled={loading}>
@@ -150,22 +164,66 @@ export default function Login() {
             <span aria-hidden="true">→</span>
           </button>
         </form>
-        {/* 2026-09-23: Recovery is handled by an administrator after identity verification. */}
-        <details className="signin-recovery">
-          <summary>Forgot password?</summary>
-          <p>
-            Contact your administrator to verify your identity and reset your
-            password. Share your username; do not share passwords.
+      ) : (
+        <form
+          className="signin-form"
+          noValidate
+          onSubmit={form.handleVerify}
+          aria-busy={loading}
+        >
+          <p className="signin-notice" role="status">
+            Your password is temporary. Choose your own password to continue.
           </p>
-          <p>
-            After receiving your new password securely, sign in and choose your
-            own password in Settings → Change password.
-          </p>
-        </details>
-        <footer className="signin-footer">
-          Need an account? Contact your administrator.
-        </footer>
-      </section>
-    </main>
+          <Field
+            id="newPassword"
+            label="New password (at least 12 characters)"
+            type="password"
+            autoComplete="new-password"
+            maxLength={72}
+            value={form.passwords.newPassword}
+            onChange={form.handleChange}
+            disabled={loading}
+            error={errors.newPassword}
+          />
+          <Field
+            id="confirmPassword"
+            label="Confirm new password"
+            type="password"
+            autoComplete="new-password"
+            maxLength={72}
+            value={form.passwords.confirmPassword}
+            onChange={form.handleChange}
+            disabled={loading}
+            error={errors.confirmPassword}
+          />
+          {form.notice && <p role="status">{form.notice}</p>}
+          {form.error && (
+            <div className="signin-error" role="alert">
+              {form.error}
+            </div>
+          )}
+          <button className="signin-submit" type="submit" disabled={loading}>
+            {loading ? "Saving…" : "Continue"}
+            <span aria-hidden="true">→</span>
+          </button>
+          <div className="signin-links">
+            <button type="button" onClick={form.startOver} disabled={loading}>
+              Start over
+            </button>
+          </div>
+        </form>
+      )}
+      <nav className="signin-links" aria-label="Other sign-in options">
+        <Link to="/forgot-password">Forgot password?</Link>
+        {admin ? (
+          <Link to="/login">Employee sign-in</Link>
+        ) : (
+          <Link to="/admin/login">Administrator sign-in</Link>
+        )}
+      </nav>
+      <footer className="signin-footer">
+        Need an account? Contact your administrator.
+      </footer>
+    </SignInFrame>
   );
 }

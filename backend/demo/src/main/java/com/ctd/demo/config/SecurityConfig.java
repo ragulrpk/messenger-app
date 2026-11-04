@@ -91,10 +91,11 @@ public class SecurityConfig {
     @Bean
     CsrfTokenRepository csrfTokenRepository() { return new HttpSessionCsrfTokenRepository(); }
 
-    /** Rotates the session ID and CSRF token after successful login. */
+    /** Rotates the session ID and CSRF token after successful login. With the default of one session per account,
+     *  signing in on another device ends the previous session (it is expired, never refused), like WhatsApp Web. */
     @Bean
     SessionAuthenticationStrategy sessionAuthenticationStrategy(CsrfTokenRepository csrf, SessionRegistry sessions,
-            @Value("${app.security.max-sessions-per-user:5}") int maximumSessions) {
+            @Value("${app.security.max-sessions-per-user:1}") int maximumSessions) {
         if (maximumSessions < 1) throw new IllegalArgumentException("Maximum sessions must be positive");
         var concurrency = new ConcurrentSessionControlAuthenticationStrategy(sessions);
         concurrency.setMaximumSessions(maximumSessions);
@@ -123,7 +124,8 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityContextRepository contexts,
                                            CsrfTokenRepository csrf, LoginRateLimiter loginRateLimiter,
-                                           SecurityErrors securityErrors, SessionRegistry sessions, UserRepository users) throws Exception {
+                                           SecurityErrors securityErrors, SessionRegistry sessions, UserRepository users, com.ctd.demo.chat.ChatPush push,
+                                           @Value("${app.security.idle-timeout:5m}") java.time.Duration idleTimeout) throws Exception {
         return http
                 .cors(Customizer.withDefaults())
                 .csrf(config -> config.csrfTokenRepository(csrf))
@@ -140,8 +142,10 @@ public class SecurityConfig {
                                 .policy("camera=(), microphone=(), geolocation=()")))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(org.springframework.http.HttpMethod.GET,
-                                "/api/v1/users/csrf", "/actuator/health", "/actuator/health/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/users/login").permitAll()
+                                "/api/v1/users/csrf", "/actuator/health", "/actuator/health/**",
+                                "/actuator/prometheus").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, LoginRateLimitFilter.SIGN_IN_PATHS
+                                .toArray(String[]::new)).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> {
@@ -152,17 +156,21 @@ public class SecurityConfig {
                             log.warn("Access denied for {} {}", request.getMethod(), request.getRequestURI());
                             securityErrors.write(response, 403, "ACCESS_DENIED", "Request denied. Refresh and try again.");
                         }))
-                .logout(logout -> logout.logoutUrl("/api/v1/users/logout")
+                .logout(logout -> logout.logoutUrl("/api/v1/users/logout").addLogoutHandler(push)
                         .invalidateHttpSession(true).clearAuthentication(true).deleteCookies("JSESSIONID")
                         .logoutSuccessHandler((request, response, authentication) -> {
                             log.info("Logout completed");
                             response.setStatus(204);
                         }))
+                // The registry expires a session when a newer sign-in replaces it or an administrator ends it; it does
+                // not record which, so the message names both.
                 .addFilterBefore(new ConcurrentSessionFilter(sessions, event ->
-                        securityErrors.write(event.getResponse(), 401, "SESSION_REVOKED",
-                                "Your session is no longer active. Please sign in again.")), AuthorizationFilter.class)
+                        securityErrors.write(event.getResponse(), 401, "SESSION_ENDED",
+                                "You were signed out because your account signed in on another device, or an administrator ended your session.")),
+                        AuthorizationFilter.class)
                 .addFilterBefore(new LoginRateLimitFilter(loginRateLimiter, securityErrors), ConcurrentSessionFilter.class)
                 .addFilterBefore(new CredentialStampFilter(users, securityErrors), AuthorizationFilter.class)
+                .addFilterBefore(new IdleSessionFilter(idleTimeout, securityErrors), AuthorizationFilter.class)
                 .build();
     }
 }

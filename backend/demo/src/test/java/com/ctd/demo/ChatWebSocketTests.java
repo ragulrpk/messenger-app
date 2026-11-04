@@ -227,22 +227,34 @@ class ChatWebSocketTests {
     }
 
     @Test
-    void passwordChangeClosesExistingSocketInAnotherBrowser() throws Exception {
-        try (var first = login("ws-alice"); var second = login("ws-alice")) {
+    void signingInElsewhereOrChangingThePasswordClosesExistingSockets() throws Exception {
+        try (var first = login("ws-alice")) {
             var inbox = new Inbox();
-            var socket = connect(second, inbox, "http://localhost:5173");
+            var socket = connect(first, inbox, "http://localhost:5173");
             try {
                 assertThat(inbox.next()).isEqualTo("ready");
-                var result = first.send(HttpRequest.newBuilder(URI.create(url("/api/v1/users/password")))
-                        .header("X-CSRF-TOKEN", token(first)).header("Content-Type", "application/json")
+                // One device at a time: a sign-in in another browser ends this session and its socket.
+                try (var elsewhere = login("ws-alice")) {
+                    sockets.heartbeat();
+                    assertThat(inbox.closed.get(3, TimeUnit.SECONDS)).isEqualTo(1008);
+                    assertThat(first.send(HttpRequest.newBuilder(URI.create(url("/api/v1/users/me"))).GET().build(),
+                            HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(401);
+                }
+            } finally { socket.abort(); }
+        }
+        try (var current = login("ws-alice")) {
+            var inbox = new Inbox();
+            var socket = connect(current, inbox, "http://localhost:5173");
+            try {
+                assertThat(inbox.next()).isEqualTo("ready");
+                var result = current.send(HttpRequest.newBuilder(URI.create(url("/api/v1/users/password")))
+                        .header("X-CSRF-TOKEN", token(current)).header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString("{\"currentPassword\":\"test-password-123\","
                                 + "\"newPassword\":\"replacement-password-123\",\"confirmPassword\":\"replacement-password-123\"}"))
                         .build(), HttpResponse.BodyHandlers.discarding());
                 assertThat(result.statusCode()).isEqualTo(204);
                 sockets.heartbeat();
                 assertThat(inbox.closed.get(3, TimeUnit.SECONDS)).isEqualTo(1008);
-                assertThat(second.send(HttpRequest.newBuilder(URI.create(url("/api/v1/users/me"))).GET().build(),
-                        HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(401);
             } finally { socket.abort(); }
         }
     }

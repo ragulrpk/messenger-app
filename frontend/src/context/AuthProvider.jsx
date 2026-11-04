@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { clearNotificationDevice } from "../services/notifications";
 import { AuthContext } from "./useAuth";
 import {
   getCurrentUser,
@@ -27,6 +28,8 @@ export default function AuthProvider({ children }) {
   const [sessionNotice, setSessionNotice] = useState("");
   const sessionVersion = useRef(0);
   const logoutPending = useRef(false);
+  // Why the server ended the session, shown on the sign-in page if it really ended.
+  const endedBecause = useRef("");
 
   useEffect(() => {
     let disposed = false;
@@ -36,7 +39,12 @@ export default function AuthProvider({ children }) {
       const version = ++sessionVersion.current;
       try {
         const current = await getCurrentUser();
-        if (!disposed && version === sessionVersion.current) setUser(current);
+        if (!disposed && version === sessionVersion.current) {
+          setUser(current);
+          if (!current && endedBecause.current)
+            setSessionNotice(endedBecause.current);
+          endedBecause.current = "";
+        }
       } catch {
         /* A temporary network failure does not end a known session. */
       } finally {
@@ -58,7 +66,9 @@ export default function AuthProvider({ children }) {
       void refreshSession();
     }
     // Verify the current session after an API request reports expiration.
-    function onExpired() {
+    function onExpired(event) {
+      if (typeof event?.detail?.message === "string")
+        endedBecause.current = event.detail.message;
       // A delayed 401 may belong to a previous account. Verify the current cookie.
       void refreshSession();
     }
@@ -95,6 +105,7 @@ export default function AuthProvider({ children }) {
     setLogoutError("");
     try {
       await logout();
+      void clearNotificationDevice();
       sessionVersion.current += 1;
       setUser(null);
       setInitializing(false);
@@ -107,6 +118,26 @@ export default function AuthProvider({ children }) {
     }
   }
 
+  // End the session from this side (five idle minutes) and say why on the sign-in page.
+  async function endSession(notice) {
+    if (logoutPending.current) return;
+    logoutPending.current = true;
+    sessionVersion.current += 1;
+    try {
+      await logout();
+    } catch {
+      // The server may already have ended it; the local state is cleared either way.
+    } finally {
+      void clearNotificationDevice();
+      sessionVersion.current += 1;
+      setUser(null);
+      setInitializing(false);
+      setSessionNotice(notice);
+      notifySessionChange();
+      logoutPending.current = false;
+    }
+  }
+
   // 2026-09-23: Suppress background revalidation until the password result is known, then clear every tab.
   async function updatePassword(credentials) {
     if (logoutPending.current)
@@ -115,6 +146,7 @@ export default function AuthProvider({ children }) {
     sessionVersion.current += 1;
     try {
       await changePassword(credentials);
+      void clearNotificationDevice();
       setSessionNotice("Password changed. Sign in with your new password.");
       sessionVersion.current += 1;
       setUser(null);
@@ -138,6 +170,7 @@ export default function AuthProvider({ children }) {
         user,
         signIn,
         signOut,
+        endSession,
         updatePassword,
         sessionNotice,
         initializing,

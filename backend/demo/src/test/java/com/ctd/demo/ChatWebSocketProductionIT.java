@@ -167,19 +167,23 @@ class ChatWebSocketProductionIT extends ChatWebSocketTests {
     }
 
     @Test
-    void separateLimiterInstancesShareCountersAndResetInRedis() {
+    void separateLimiterInstancesShareCountersAndReleaseOneSlotInRedis() {
         String key = "integration:" + UUID.randomUUID();
         var first = new RedisLoginRateLimiter(redis, 2, Duration.ofSeconds(60));
         var second = new RedisLoginRateLimiter(redis, 2, Duration.ofSeconds(60));
-        try {
-            assertThat(first.allow(key)).isTrue();
-            assertThat(second.allow(key)).isTrue();
-            assertThat(first.allow(key)).isFalse();
-            second.clear(key);
-            assertThat(first.allow(key)).isTrue();
-        } finally {
-            first.clear(key);
-        }
+        assertThat(first.allow(key)).isTrue();
+        assertThat(second.allow(key)).isTrue();
+        // A success gives back exactly one slot through either instance; the other stays counted.
+        second.release(key);
+        assertThat(first.allow(key)).isTrue();
+        assertThat(first.allow(key)).isFalse();
+        // Releasing more than was reserved, or after the window expired, never goes below zero.
+        String other = "integration:" + UUID.randomUUID();
+        first.release(other);
+        first.release(other);
+        assertThat(first.allow(other)).isTrue();
+        assertThat(first.allow(other)).isTrue();
+        assertThat(first.allow(other)).isFalse();
     }
 
     @Container

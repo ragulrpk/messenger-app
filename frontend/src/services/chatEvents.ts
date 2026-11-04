@@ -2,6 +2,8 @@
 export function connectChatEvents(
   onRefresh: () => void,
   onTyping?: (conversationId: string, active: boolean) => void,
+  // Told when live hints start and stop flowing, so polling can back off meanwhile.
+  onLive?: (live: boolean) => void,
 ) {
   if (typeof window.WebSocket !== "function") return () => {};
   const auth = import.meta.env?.VITE_AUTH_LOGIN_URL || "/api/v1/users/login";
@@ -46,6 +48,7 @@ export function connectChatEvents(
         armWatchdog();
         if (event.data === "ready") {
           attempt = 0;
+          onLive?.(true);
           onRefresh(); // Recover changes missed before connection or during a disconnect.
         } else if (event.data === "refresh") onRefresh();
         else if (typeof event.data === "string") {
@@ -58,6 +61,7 @@ export function connectChatEvents(
         if (stopped || socket !== current) return;
         window.clearTimeout(watchdog);
         socket = null;
+        onLive?.(false);
         if (event.code === 1008) {
           window.dispatchEvent(new window.Event("messenger:session-expired"));
           attempt = 5;

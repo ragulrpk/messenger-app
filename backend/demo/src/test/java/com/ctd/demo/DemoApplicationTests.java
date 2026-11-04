@@ -81,7 +81,7 @@ class DemoApplicationTests {
         sessionRevocation.revokeAll("taylor");
         mvc.perform(get("/api/v1/users/me").session(session))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+                .andExpect(jsonPath("$.code").value("SESSION_ENDED"));
     }
 
     @Test
@@ -165,6 +165,12 @@ class DemoApplicationTests {
         mvc.perform(options(LOGIN).header("Origin", "https://untrusted.example")
                         .header("Access-Control-Request-Method", "POST"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void prometheusScrapesWithoutAnEmployeeSessionWhileUserDataStaysProtected() throws Exception {
+        mvc.perform(get("/actuator/prometheus")).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/users/me")).andExpect(status().isUnauthorized());
     }
 
     @Test

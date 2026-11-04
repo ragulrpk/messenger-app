@@ -98,12 +98,18 @@ All chat routes require an authenticated, enabled account. The backend obtains t
 | POST | `/api/v1/chat/conversations/direct` | `{ userId }` | Existing or newly created direct conversation |
 | GET | `/api/v1/chat/conversations/{id}/messages` | Optional `before` OR `after` sequence | `{ messages, hasMore }`, 50 per page in ascending order |
 | POST | `/api/v1/chat/conversations/{id}/messages` | `{ clientId, text }` | Saved message, including server ID, sequence, sender, timestamp |
+| POST | `/api/v1/chat/conversations/{id}/preferences` | Any of `{ pinned, muted, hidden, unread }` | Updated conversation summary; omitted fields are unchanged |
+| POST | `/api/v1/chat/conversations/{id}/read` | `{ sequence }` (optional) | Updated summary; read position moves forward only, all messages when omitted |
+| GET | `/api/v1/chat/presence` | — | `{ status, note }` of the caller |
+| POST | `/api/v1/chat/presence` | `{ status, note }` | Status is `online`, `offline`, `meeting` or `busy`; note at most 160 characters |
 
 `userId`, conversation IDs, and `clientId` are UUIDs. Text must be nonblank and at most 4000 characters. Omit message cursors for the latest page; `before` loads older history and `after` catches up with incoming messages. Continue catch-up when `hasMore` is true. As of 2026-09-23, `/api/v1/chat/events` provides authenticated WebSocket refresh hints after commit, with Redis Pub/Sub across production instances. Message sending and retrieval remain HTTP-based; polling provides reconciliation fallback.
 
-Conversation summaries contain `{ id, targetId, name, updatedAt, lastMessage }`. Message objects contain `{ id, sequence, senderId, senderName, clientId, text, sentAt }`. `lastMessage` is null for a newly created empty conversation.
+Conversation summaries contain `{ id, targetId, name, updatedAt, lastMessage, pinned, muted, hidden, unread, targetStatus, targetNote }`. Preferences and `unread` belong to the caller only. `unread` counts the other person's messages after the caller's read position, and is at least 1 when manually marked unread. Message objects contain `{ id, sequence, senderId, senderName, clientId, text, sentAt, attachment }`. `lastMessage` is null for a newly created empty conversation.
 
-Attachments, groups, persisted sidebar preferences, shared presence, and read receipts are not implemented. Provision a second local account by starting with a different `BOOTSTRAP_USERNAME` and password; provisioning never overwrites an existing account. Use separate browser profiles when testing two accounts because tabs normally share the same session cookie.
+Migration `V7__member_preferences_and_presence.sql` adds the preference and read-position columns to `chat_members` (existing history starts as read) and a `user_presence` table. A new message un-hides the conversation for every member; sending also marks the sender's own read position. Preference, read and presence changes send refresh hints to the caller's other tabs, and presence changes also reach everyone who shares a conversation with the caller.
+
+Groups and read receipts shown to the other person are not implemented. Provision a second local account by starting with a different `BOOTSTRAP_USERNAME` and password; provisioning never overwrites an existing account. Use separate browser profiles when testing two accounts because tabs normally share the same session cookie.
 
 ### Messaging verification
 
@@ -114,3 +120,17 @@ mvn.cmd "-Dmaven.repo.local=$env:USERPROFILE/.m2/repository" '-DargLine=-Djdk.ne
 ```
 
 The default test profile uses H2. The suite also supports PostgreSQL by overriding `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, and `SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver` for the test process. **Use a dedicated disposable database only: tests delete users and messaging records.** Both migrations and the full suite were verified against an isolated PostgreSQL database during implementation, then that database was removed.
+
+## Message notifications and browser push
+
+Notifications now use an ordered database feed (`GET /api/v1/chat/notifications?after=…`), independent of conversation previews and sidebar pagination. A first request without a cursor establishes a baseline; subsequent requests page through individual incoming messages. Muted chats stay quiet except for mentions. Self-messages, cleared/hidden/deleted messages and conversations the recipient left are excluded. Feed entries expire after seven days. Browser tabs share an account-scoped cursor; the notification service worker deduplicates foreground and background delivery by message ID.
+
+For notifications while the app is closed, serve the app over HTTPS (localhost is suitable for development). Generate a stable VAPID pair once with `java scripts/GeneratePushKeys.java`. Set `PUSH_PUBLIC_KEY`, `PUSH_PRIVATE_KEY` and `PUSH_SUBJECT` (`mailto:` administrator contact) on every backend replica, using the same pair across replicas. Store the private key in deployment secrets, never in the frontend. Compose forwards these variables. In Kubernetes, add them to the backend Secret/environment. Without the keys, live desktop notifications still work and settings explicitly reports that background notifications are unavailable.
+
+Users enable notifications in Chat settings and grant browser permission. Existing push subscriptions are refreshed on sign-in. The push worker stores progress in PostgreSQL, retries temporary delivery failures, and removes expired subscriptions (HTTP 404/410). Logout removes that session's subscriptions; password changes and disabled accounts invalidate them. Notifications do not extend HTTP sessions. Clicking an alert opens its conversation; normal authentication is still required to access messages. Supported endpoints are the standard Chrome/Edge, Firefox, Apple and Windows browser push services. Delivery depends on the browser/OS allowing background push; a browser or device forcibly stopped by its user may not receive it until restarted.
+
+### Change synchronization and concurrent actions
+
+`GET /api/v1/chat/conversations/{id}/messages` uses independent message-sequence and change-revision cursors. Pass `changedAfter` to recover edits, reactions, deletions and per-user removals. The response `revision` is the fully processed continuation position, not necessarily the conversation's newest revision. While `hasMoreChanges` is true, request another page with `changedAfter=revision`, even when there are no newer messages or the change page is empty. Each response covers at most 500 mutation revisions; both changed messages and removals are bounded by that same interval. Changes made while paging are recovered by later intervals. The frontend applies every page before advancing its cursor, retries failures from the last applied position and yields between long catch-up batches.
+
+Message edits, deletes and reactions locate the conversation, acquire its database row lock, then reload current membership, visibility, ownership and deletion state before applying the action. Sends recheck membership and quoted-message access under that lock too. A mutation waiting behind an unsend, history clear or membership removal cannot use its earlier authorization result. Concurrent edits are serialized with the last successful edit taking effect; there is no optimistic version conflict prompt.

@@ -12,6 +12,13 @@ import jakarta.persistence.LockModeType;
 public interface UserRepository extends JpaRepository<AppUser, UUID> {
     /** Finds an account by its normalized username. */
     Optional<AppUser> findByUsername(String username);
+    Optional<AppUser> findByEmail(String email);
+    Optional<AppUser> findByMobile(String mobile);
+    Optional<AppUser> findByGpfNumber(String gpfNumber);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from AppUser u where u.id = :id")
+    Optional<AppUser> lockById(@Param("id") UUID id);
 
     /** 2026-09-23: Serialize authentication and password changes for the same account. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

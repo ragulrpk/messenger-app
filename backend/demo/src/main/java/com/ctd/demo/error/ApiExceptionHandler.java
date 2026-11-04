@@ -28,6 +28,18 @@ public class ApiExceptionHandler {
                 "message", "Check the password fields.", "fieldErrors", Map.of(exception.field(), exception.getMessage())));
     }
 
+    /** Administrative refusals carry their own code and a message written for the administrator. */
+    @ExceptionHandler(com.ctd.demo.admin.AdminRejected.class)
+    ResponseEntity<Map<String, String>> adminRejected(com.ctd.demo.admin.AdminRejected exception) {
+        return error(exception.status(), exception.code(), exception.getMessage());
+    }
+
+    /** Sign-in and password-reset refusals carry their own code and a message written for the person. */
+    @ExceptionHandler(com.ctd.demo.auth.SignInRejected.class)
+    ResponseEntity<Map<String, String>> signInRejected(com.ctd.demo.auth.SignInRejected exception) {
+        return error(exception.status(), exception.code(), exception.getMessage());
+    }
+
     /** Maps explicit rejections to stable public codes without exposing arbitrary reasons. */
     @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
     ResponseEntity<Map<String, String>> statusError(org.springframework.web.server.ResponseStatusException exception) {
